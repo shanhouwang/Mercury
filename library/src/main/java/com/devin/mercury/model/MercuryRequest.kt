@@ -1,5 +1,10 @@
 package com.devin.model.mercury
 
+import com.devin.mercury.Mercury
+import com.devin.mercury.annotation.Get
+import okhttp3.*
+import java.io.IOException
+
 abstract class MercuryRequest {
 
     /**
@@ -113,6 +118,17 @@ abstract class MercuryRequest {
                           , successCallback: T.() -> Unit
                           , cacheCallback: T.() -> Unit
                           , failCallback: String.() -> Unit) {
+        var url = this.javaClass.getAnnotation(Get::class.java)?.url
+        println(">>>>>url：$url<<<<<")
+        var request = Request.Builder().url(url).get().build()
+        Mercury.mOkHttpClient.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call?, e: IOException?) {
+            }
+
+            override fun onResponse(call: Call?, response: Response?) {
+                println(">>>>>${response?.body()?.string()}<<<<<")
+            }
+        })
     }
 
 }

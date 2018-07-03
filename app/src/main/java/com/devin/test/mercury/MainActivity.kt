@@ -2,6 +2,8 @@ package com.devin.test.mercury
 
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
+import com.devin.mercury.Mercury
+import okhttp3.OkHttpClient
 
 class MainActivity : AppCompatActivity() {
 
@@ -9,7 +11,9 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        BaseRequest().request(BaseResponse::class.java
+        Mercury.init(OkHttpClient())
+
+        BaseRequest("","").request(BaseResponse::class.java
                 , startCallback = {
                 }
                 , endCallback = {
@@ -25,7 +29,7 @@ class MainActivity : AppCompatActivity() {
                 }
         )
 
-        BaseRequest().request(BaseResponse::class.java
+        BaseRequest("","").request(BaseResponse::class.java
                 , successCallback = {
 
                 }
