@@ -1,7 +1,10 @@
 package com.devin.model.mercury
 
+import android.text.TextUtils
 import com.devin.mercury.Mercury
 import com.devin.mercury.annotation.Get
+import com.devin.mercury.annotation.ContentType
+import com.devin.mercury.annotation.Post
 import okhttp3.*
 import java.io.IOException
 
@@ -118,17 +121,33 @@ abstract class MercuryRequest {
                           , successCallback: T.() -> Unit
                           , cacheCallback: T.() -> Unit
                           , failCallback: String.() -> Unit) {
-        var url = this.javaClass.getAnnotation(Get::class.java)?.url
-        println(">>>>>url：$url<<<<<")
-        var request = Request.Builder().url(url).get().build()
+        var request = buildRequest()
         Mercury.mOkHttpClient.newCall(request).enqueue(object : Callback {
-            override fun onFailure(call: Call?, e: IOException?) {
-            }
-
             override fun onResponse(call: Call?, response: Response?) {
                 println(">>>>>${response?.body()?.string()}<<<<<")
             }
+
+            override fun onFailure(call: Call?, e: IOException?) {
+            }
         })
+    }
+
+    private fun buildRequest(): Request? {
+
+        var url = this.javaClass.getAnnotation(Get::class.java)?.url
+        if (!TextUtils.isEmpty(url)) {
+            return Request.Builder().url(url).get().build()
+        }
+
+        url = this.javaClass.getAnnotation(Post::class.java)?.url
+        if (!TextUtils.isEmpty(url)) {
+
+            var type = this.javaClass.getAnnotation(ContentType::class.java)?.type ?: Mercury.mediaType
+
+            MediaType.parse(type)
+            return Request.Builder().url(url).post().build()
+        }
+        return null
     }
 
 }

@@ -7,9 +7,19 @@ class Mercury {
     companion object {
 
         lateinit var mOkHttpClient: OkHttpClient
+        lateinit var mediaType: String
 
-        fun init(client: OkHttpClient) {
-            mOkHttpClient = client
+        fun init(builder: MercuryBuilder) {
+            mOkHttpClient = builder.okHttpClient()
+            mediaType = builder.mediaType()
         }
+    }
+
+    interface MercuryBuilder {
+
+        fun okHttpClient(): OkHttpClient
+
+        fun mediaType(): String
+
     }
 }
