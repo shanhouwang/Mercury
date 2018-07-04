@@ -1,14 +1,13 @@
 package com.devin.model.mercury
 
 import android.text.TextUtils
-import com.devin.mercury.FORM
-import com.devin.mercury.FORM_DATA
-import com.devin.mercury.JSON
-import com.devin.mercury.Mercury
+import com.alibaba.fastjson.JSON
+import com.devin.mercury.*
 import com.devin.mercury.annotation.Get
 import com.devin.mercury.annotation.ContentType
 import com.devin.mercury.annotation.Post
 import okhttp3.*
+import org.json.JSONObject
 import java.io.IOException
 
 abstract class MercuryRequest {
@@ -124,8 +123,8 @@ abstract class MercuryRequest {
                           , successCallback: T.() -> Unit
                           , cacheCallback: T.() -> Unit
                           , failCallback: String.() -> Unit) {
-        var request = buildRequest()
-        Mercury.mOkHttpClient.newCall(request).enqueue(object : Callback {
+
+        Mercury.mOkHttpClient.newCall(buildRequest()).enqueue(object : Callback {
             override fun onResponse(call: Call?, response: Response?) {
                 println(">>>>>${response?.body()?.string()}<<<<<")
             }
@@ -135,7 +134,7 @@ abstract class MercuryRequest {
         })
     }
 
-    private fun buildRequest(): Request? {
+    private fun buildRequest(): Request {
 
         var url = this.javaClass.getAnnotation(Get::class.java)?.url
         if (!TextUtils.isEmpty(url)) {
@@ -146,16 +145,22 @@ abstract class MercuryRequest {
 
         if (!TextUtils.isEmpty(url)) {
 
-            var type = this.javaClass.getAnnotation(ContentType::class.java)?.type ?: Mercury.contentType
-            var requestBody: RequestBody? =
+            var type = this.javaClass.getAnnotation(ContentType::class.java)?.type
+                    ?: Mercury.contentType
+            var requestBody: RequestBody =
                     when (type) {
-                        JSON -> RequestBody.create(MediaType.parse(type), "")
-                        FORM -> FormBody.Builder().add().build()
-                        else -> null
+                        MercuryContentType.JSON -> RequestBody.create(MediaType.parse(type), JSON.toJSONString(this))
+                        MercuryContentType.FORM -> FormBody.Builder().apply {
+                            this.javaClass.declaredFields.forEach {
+                                it.isAccessible = true
+                                addEncoded(it.name, it.get(this@MercuryRequest).toString())
+                            }
+                        }.build()
+                        else -> throw IllegalArgumentException("not find content type $type.")
                     }
-            return Request.Builder().url(url).post().build()
+            return Request.Builder().url(url).post(requestBody).build()
         }
-        return null
+        return throw IllegalArgumentException("request must not null.")
     }
 
 }

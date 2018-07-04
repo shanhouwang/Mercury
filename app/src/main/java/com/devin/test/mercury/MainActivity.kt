@@ -2,8 +2,8 @@ package com.devin.test.mercury
 
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
-import com.devin.mercury.JSON
 import com.devin.mercury.Mercury
+import com.devin.mercury.MercuryContentType
 import okhttp3.OkHttpClient
 
 class MainActivity : AppCompatActivity() {
@@ -18,27 +18,11 @@ class MainActivity : AppCompatActivity() {
             }
 
             override fun contentType(): String {
-                return JSON
+                return MercuryContentType.JSON
             }
         })
 
-        BaseRequest("","").request(BaseResponse::class.java
-                , startCallback = {
-                }
-                , endCallback = {
-                }
-                , successCallback = {
-
-                }
-                , cacheCallback = {
-
-                }
-                , failCallback = {
-
-                }
-        )
-
-        BaseRequest("","").request(BaseResponse::class.java
+        BaseRequest("10086","Devin").request(BaseResponse::class.java
                 , successCallback = {
                 }
                 , failCallback = {
