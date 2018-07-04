@@ -1,6 +1,9 @@
 package com.devin.model.mercury
 
 import android.text.TextUtils
+import com.devin.mercury.FORM
+import com.devin.mercury.FORM_DATA
+import com.devin.mercury.JSON
 import com.devin.mercury.Mercury
 import com.devin.mercury.annotation.Get
 import com.devin.mercury.annotation.ContentType
@@ -140,11 +143,16 @@ abstract class MercuryRequest {
         }
 
         url = this.javaClass.getAnnotation(Post::class.java)?.url
+
         if (!TextUtils.isEmpty(url)) {
 
             var type = this.javaClass.getAnnotation(ContentType::class.java)?.type ?: Mercury.contentType
-
-            MediaType.parse(type)
+            var requestBody: RequestBody? =
+                    when (type) {
+                        JSON -> RequestBody.create(MediaType.parse(type), "")
+                        FORM -> FormBody.Builder().add().build()
+                        else -> null
+                    }
             return Request.Builder().url(url).post().build()
         }
         return null
