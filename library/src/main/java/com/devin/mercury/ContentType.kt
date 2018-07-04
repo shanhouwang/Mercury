@@ -16,6 +16,26 @@ const val FORM = "application/x-www-from-urlencoded"
 const val FORM_DATA = "multipart/form-data"
 
 /**
+ *
+ */
+const val MIXED = "multipart/mixed"
+
+/**
+ *
+ */
+const val ALTERNATIVE = "multipart/alternative"
+
+/**
+ *
+ */
+const val DIGEST = "multipart/digest"
+
+/**
+ *
+ */
+const val PARALLEL = "multipart/parallel"
+
+/**
  * 纯粹字符串
  */
 const val TEXT = "const val text/plain"

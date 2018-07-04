@@ -17,7 +17,7 @@ class MainActivity : AppCompatActivity() {
                 return OkHttpClient()
             }
 
-            override fun mediaType(): String {
+            override fun contentType(): String {
                 return JSON
             }
         })

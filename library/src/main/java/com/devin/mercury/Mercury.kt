@@ -7,11 +7,11 @@ class Mercury {
     companion object {
 
         lateinit var mOkHttpClient: OkHttpClient
-        lateinit var mediaType: String
+        lateinit var contentType: String
 
         fun init(builder: MercuryBuilder) {
             mOkHttpClient = builder.okHttpClient()
-            mediaType = builder.mediaType()
+            contentType = builder.contentType()
         }
     }
 
@@ -19,7 +19,7 @@ class Mercury {
 
         fun okHttpClient(): OkHttpClient
 
-        fun mediaType(): String
+        fun contentType(): String
 
     }
 }

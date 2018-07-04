@@ -142,7 +142,7 @@ abstract class MercuryRequest {
         url = this.javaClass.getAnnotation(Post::class.java)?.url
         if (!TextUtils.isEmpty(url)) {
 
-            var type = this.javaClass.getAnnotation(ContentType::class.java)?.type ?: Mercury.mediaType
+            var type = this.javaClass.getAnnotation(ContentType::class.java)?.type ?: Mercury.contentType
 
             MediaType.parse(type)
             return Request.Builder().url(url).post().build()
