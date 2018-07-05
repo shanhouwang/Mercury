@@ -1,5 +1,6 @@
 package com.devin.test.mercury
 
+import android.content.Context
 import android.os.Bundle
 import android.support.v7.app.AppCompatActivity
 import com.devin.mercury.Mercury
@@ -14,7 +15,13 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        println(">>>>>main thread: ${Thread.currentThread().id}<<<<<")
+
         Mercury.init(object : Mercury.MercuryBuilder {
+            override fun getContext(): Context {
+                return this@MainActivity
+            }
+
             override fun okHttpClient(): OkHttpClient {
                 return OkHttpClient.Builder()
                         .addInterceptor(HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BODY))
@@ -28,8 +35,17 @@ class MainActivity : AppCompatActivity() {
         })
 
         BaseRequest("10086", "Devin").request(BaseResponse::class.java
+                , startCallback = {
+                    println(">>>>>start: $this<<<<<")
+                }
+                , endCallback = {
+                    println(">>>>>end: $this<<<<<")
+                }
                 , successCallback = {
                     println(">>>>>success: $this<<<<<")
+                }
+                , cacheCallback = {
+                    println(">>>>>cache: $this<<<<<")
                 }
                 , failedCallback = {
                     println(">>>>>fail: $this<<<<<")

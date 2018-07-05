@@ -7,6 +7,8 @@ import com.devin.mercury.MercuryContentType
 import com.devin.mercury.annotation.ContentType
 import com.devin.mercury.annotation.Get
 import com.devin.mercury.annotation.Post
+import com.devin.mercury.utils.MercuryCache
+import com.devin.mercury.utils.ThreadUtils
 import okhttp3.*
 import java.io.File
 import java.io.IOException
@@ -113,13 +115,35 @@ abstract class MercuryRequest {
                           , cacheCallback: T.() -> Unit
                           , failedCallback: String.() -> Unit) {
         startCallback.invoke()
+
+        ThreadUtils
+                .get(ThreadUtils.Type.CACHED)
+                .apply {
+                    start(object : ThreadUtils.MercuryRunnable<T>() {
+                        override fun execute(): T? {
+                            return MercuryCache.get("http://www.baidu.com", responseClazz)
+                        }
+                    })
+                    callBack {
+                        cacheCallback.invoke(it as T)
+                    }
+                }
+
         Mercury.mOkHttpClient.newCall(buildRequest()).enqueue(object : Callback {
             override fun onResponse(call: Call?, response: Response?) {
+                println(">>>>>thread: ${Thread.currentThread().id}<<<<<")
                 endCallback.invoke()
-                var body = response?.body()?.string();
+                var body = response?.body()?.string()
+                body = "{ \"code\": \"10086\", \"msg\": \"真好通过了哦\" }"
                 println(">>>>>onResponse: $body<<<<<")
                 try {
                     successCallback.invoke(JSON.parseObject(body, responseClazz))
+                    /** 说明业务数据是正常的 */
+                    ThreadUtils
+                            .get(ThreadUtils.Type.CACHED)
+                            .start {
+                                MercuryCache.put("http://www.baidu.com", body)
+                            }
                 } catch (e: Exception) {
                     failedCallback.invoke(e.message ?: "exception")
                 } finally {
