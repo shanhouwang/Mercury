@@ -1,6 +1,8 @@
 package com.devin.mercury
 
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import okhttp3.OkHttpClient
 
 class Mercury {
@@ -10,6 +12,7 @@ class Mercury {
         lateinit var context: Context
         lateinit var mOkHttpClient: OkHttpClient
         lateinit var contentType: String
+        var handler = Handler(Looper.getMainLooper())
 
         fun init(builder: MercuryBuilder) {
             mOkHttpClient = builder.okHttpClient()

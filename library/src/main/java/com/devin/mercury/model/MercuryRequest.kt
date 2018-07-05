@@ -120,6 +120,9 @@ abstract class MercuryRequest {
                 .get(ThreadUtils.Type.CACHED)
                 .apply {
                     callBack {
+                        if (null == it) {
+                            return@callBack
+                        }
                         cacheCallback.invoke(it as T)
                     }
                     start(object : ThreadUtils.MercuryRunnable<T>() {
@@ -131,28 +134,32 @@ abstract class MercuryRequest {
 
         Mercury.mOkHttpClient.newCall(buildRequest()).enqueue(object : Callback {
             override fun onResponse(call: Call?, response: Response?) {
-                println(">>>>>thread: ${Thread.currentThread().id}<<<<<")
-                endCallback.invoke()
+                Mercury.handler.post({
+                    endCallback.invoke()
+                })
                 var body = response?.body()?.string()
-                body = "{ \"code\": \"10086\", \"msg\": \"真好通过了哦\" }"
                 println(">>>>>onResponse: $body<<<<<")
-                try {
-                    successCallback.invoke(JSON.parseObject(body, responseClazz))
-                    /** 说明业务数据是正常的 */
-                    ThreadUtils
-                            .get(ThreadUtils.Type.CACHED)
-                            .start {
-                                MercuryCache.put("http://www.baidu.com", body)
-                            }
-                } catch (e: Exception) {
-                    failedCallback.invoke(e.message ?: "exception")
-                } finally {
-                    response?.body()?.close()
-                }
+                Mercury.handler.post({
+                    try {
+                        successCallback.invoke(JSON.parseObject(body, responseClazz))
+                        /** 说明此时业务数据是正常的 */
+                        ThreadUtils
+                                .get(ThreadUtils.Type.CACHED)
+                                .start {
+                                    MercuryCache.put("http://www.baidu.com", body)
+                                }
+                    } catch (e: Exception) {
+                        Mercury.handler.post({
+                            failedCallback.invoke(e.message ?: "exception")
+                        })
+                    }
+                })
             }
 
             override fun onFailure(call: Call?, e: IOException?) {
-                failedCallback.invoke(e?.message ?: "exception")
+                Mercury.handler.post({
+                    failedCallback.invoke(e?.message ?: "exception")
+                })
             }
         })
     }

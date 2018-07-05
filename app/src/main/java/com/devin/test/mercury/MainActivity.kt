@@ -3,10 +3,12 @@ package com.devin.test.mercury
 import android.content.Context
 import android.os.Bundle
 import android.support.v7.app.AppCompatActivity
+import android.view.View
 import com.devin.mercury.Mercury
 import com.devin.mercury.MercuryContentType
 import com.devin.mercury.interceptor.HttpLoggingInterceptor
 import com.readystatesoftware.chuck.ChuckInterceptor
+import kotlinx.android.synthetic.main.activity_main.*
 import okhttp3.OkHttpClient
 
 class MainActivity : AppCompatActivity() {
@@ -34,22 +36,25 @@ class MainActivity : AppCompatActivity() {
             }
         })
 
-        BaseRequest("10086", "Devin").request(BaseResponse::class.java
-                , startCallback = {
-                    println(">>>>>start: $this<<<<<")
+        BaseRequest("10086", "Devin")
+                .request(BaseResponse::class.java
+                        , startCallback = {
+                    progressBar.visibility = View.VISIBLE
+                    println(">>>>>start: ${Thread.currentThread().id}<<<<<")
                 }
-                , endCallback = {
-                    println(">>>>>end: $this<<<<<")
+                        , endCallback = {
+                    progressBar.visibility = View.GONE
+                    println(">>>>>end: ${Thread.currentThread().id}<<<<<")
                 }
-                , successCallback = {
-                    println(">>>>>success: $this<<<<<")
+                        , successCallback = {
+                    println(">>>>>success: ${Thread.currentThread().id}<<<<<")
                 }
-                , cacheCallback = {
-                    println(">>>>>cache: $this<<<<<")
+                        , cacheCallback = {
+                    println(">>>>>cache: ${Thread.currentThread().id}<<<<<")
                 }
-                , failedCallback = {
-                    println(">>>>>fail: $this<<<<<")
+                        , failedCallback = {
+                    println(">>>>>fail: ${Thread.currentThread().id}<<<<<")
                 }
-        )
+                )
     }
 }
