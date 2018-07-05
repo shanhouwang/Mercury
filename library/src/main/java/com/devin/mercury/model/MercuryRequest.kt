@@ -18,7 +18,6 @@ abstract class MercuryRequest {
 
     /**
      * @param responseClazz 回调类型
-     *
      * @param successCallback 成功回调方法
      */
     fun <T> request(responseClazz: Class<T>
@@ -26,36 +25,31 @@ abstract class MercuryRequest {
         build(responseClazz
                 , startCallback = {}
                 , endCallback = {}
-                , successCallback = { successCallback }
+                , successCallback = { successCallback() }
                 , cacheCallback = {}
-                , failCallback = {})
+                , failedCallback = {})
     }
 
     /**
      * @param responseClazz 回调类型
-     *
      * @param successCallback 成功回调方法
-     *
-     * @param failCallback 失败回调方法
+     * @param failedCallback 失败回调方法
      */
     fun <T> request(responseClazz: Class<T>
                     , successCallback: T.() -> Unit
-                    , failCallback: String.() -> Unit) {
+                    , failedCallback: String.() -> Unit) {
         build(responseClazz
                 , startCallback = {}
                 , endCallback = {}
-                , successCallback = { successCallback }
+                , successCallback = { successCallback() }
                 , cacheCallback = {}
-                , failCallback = { failCallback })
+                , failedCallback = { failedCallback() })
     }
 
     /**
      * @param responseClazz 回调类型
-     *
      * @param startCallback 调用网络接口之前的回调
-     *
      * @param endCallback 调用网络接口之后的回调
-     *
      * @param successCallback 成功回调方法
      */
     fun <T> request(responseClazz: Class<T>
@@ -63,62 +57,53 @@ abstract class MercuryRequest {
                     , endCallback: () -> Unit
                     , successCallback: T.() -> Unit) {
         build(responseClazz
-                , startCallback = { startCallback }
-                , endCallback = { endCallback }
-                , successCallback = { successCallback }
+                , startCallback = { startCallback() }
+                , endCallback = { endCallback() }
+                , successCallback = { successCallback() }
                 , cacheCallback = {}
-                , failCallback = {})
+                , failedCallback = {})
     }
 
     /**
      * @param responseClazz 回调类型
-     *
      * @param startCallback 调用网络接口之前的回调
-     *
      * @param endCallback 调用网络接口之后的回调
-     *
      * @param successCallback 成功回调方法
-     *
-     * @param failCallback 失败回调方法
+     * @param failedCallback 失败回调方法
      */
     fun <T> request(responseClazz: Class<T>
                     , startCallback: () -> Unit
                     , endCallback: () -> Unit
                     , successCallback: T.() -> Unit
-                    , failCallback: String.() -> Unit) {
+                    , failedCallback: String.() -> Unit) {
         build(responseClazz
-                , startCallback = { startCallback }
-                , endCallback = { endCallback }
-                , successCallback = { successCallback }
+                , startCallback = { startCallback() }
+                , endCallback = { endCallback() }
+                , successCallback = { successCallback() }
                 , cacheCallback = {}
-                , failCallback = { failCallback })
+                , failedCallback = { failedCallback() })
     }
 
     /**
      * @param responseClazz 回调类型
-     *
      * @param startCallback 调用网络接口之前的回调
-     *
      * @param endCallback 调用网络接口之后的回调
-     *
      * @param successCallback 成功回调方法
-     *
      * @param cacheCallback 本地缓存回调
-     *
-     * @param failCallback 失败回调方法
+     * @param failedCallback 失败回调方法
      */
     fun <T> request(responseClazz: Class<T>
                     , startCallback: () -> Unit
                     , endCallback: () -> Unit
                     , successCallback: T.() -> Unit
                     , cacheCallback: T.() -> Unit
-                    , failCallback: String.() -> Unit) {
+                    , failedCallback: String.() -> Unit) {
         build(responseClazz
-                , startCallback = { startCallback }
-                , endCallback = { endCallback }
-                , successCallback = { successCallback }
-                , cacheCallback = { cacheCallback }
-                , failCallback = { failCallback })
+                , startCallback = { startCallback() }
+                , endCallback = { endCallback() }
+                , successCallback = { successCallback() }
+                , cacheCallback = { cacheCallback() }
+                , failedCallback = { failedCallback() })
     }
 
     private fun <T> build(responseClazz: Class<T>
@@ -126,21 +111,24 @@ abstract class MercuryRequest {
                           , endCallback: () -> Unit
                           , successCallback: T.() -> Unit
                           , cacheCallback: T.() -> Unit
-                          , failCallback: String.() -> Unit) {
+                          , failedCallback: String.() -> Unit) {
         startCallback.invoke()
         Mercury.mOkHttpClient.newCall(buildRequest()).enqueue(object : Callback {
             override fun onResponse(call: Call?, response: Response?) {
                 endCallback.invoke()
-                println(">>>>>${response?.body()?.string()}<<<<<")
+                var body = response?.body()?.string();
+                println(">>>>>onResponse: $body<<<<<")
                 try {
-                    successCallback.invoke(JSON.parseObject(response?.body()?.string(), responseClazz))
+                    successCallback.invoke(JSON.parseObject(body, responseClazz))
                 } catch (e: Exception) {
-                    failCallback.invoke(e?.message ?: "exception")
+                    failedCallback.invoke(e.message ?: "exception")
+                } finally {
+                    response?.body()?.close()
                 }
             }
 
             override fun onFailure(call: Call?, e: IOException?) {
-                failCallback.invoke(e?.message ?: "exception")
+                failedCallback.invoke(e?.message ?: "exception")
             }
         })
     }

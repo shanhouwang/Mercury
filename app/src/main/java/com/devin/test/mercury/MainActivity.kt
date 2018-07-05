@@ -29,14 +29,11 @@ class MainActivity : AppCompatActivity() {
 
         BaseRequest("10086", "Devin").request(BaseResponse::class.java
                 , successCallback = {
-        }
-                , failCallback = {
-        }
+                    println(">>>>>success: $this<<<<<")
+                }
+                , failedCallback = {
+                    println(">>>>>fail: $this<<<<<")
+                }
         )
-
-//        UpdateAvatarRequest("10086", File("")).request(BaseResponse::class.java
-//                , successCallback = {}
-//                , failCallback = {}
-//        )
     }
 }
