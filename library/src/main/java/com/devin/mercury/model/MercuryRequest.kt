@@ -5,6 +5,9 @@ import com.devin.mercury.annotation.Get
 import okhttp3.*
 import java.io.IOException
 
+/**
+ * @author devin
+ */
 abstract class MercuryRequest {
 
     /**
