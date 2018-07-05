@@ -119,14 +119,14 @@ abstract class MercuryRequest {
         ThreadUtils
                 .get(ThreadUtils.Type.CACHED)
                 .apply {
+                    callBack {
+                        cacheCallback.invoke(it as T)
+                    }
                     start(object : ThreadUtils.MercuryRunnable<T>() {
                         override fun execute(): T? {
                             return MercuryCache.get("http://www.baidu.com", responseClazz)
                         }
                     })
-                    callBack {
-                        cacheCallback.invoke(it as T)
-                    }
                 }
 
         Mercury.mOkHttpClient.newCall(buildRequest()).enqueue(object : Callback {

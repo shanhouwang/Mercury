@@ -10,55 +10,57 @@ class MercuryCache {
 
     companion object {
 
-        const val MERCURY_CACHE = "mercury_cache"
+        private const val MERCURY_CACHE = "mercury_cache"
 
-        private fun getCacheDir(): File {
-            return File(Mercury.mOkHttpClient.cache()?.directory()?.path
-                    ?: (Mercury.context.externalCacheDir.path + File.separator + MERCURY_CACHE))
+        private fun getCacheDir(): String {
+            return Mercury.mOkHttpClient.cache()?.directory()?.path
+                    ?: (Mercury.context.externalCacheDir.path + File.separator + MERCURY_CACHE)
         }
 
         fun <T> get(key: String, clazz: Class<T>): T? {
             return try {
                 JSON.parseObject(get(key), clazz)
             } catch (e: Exception) {
+                e.printStackTrace()
                 null
             }
         }
 
         fun get(key: String): String? {
-            var f = File(getCacheDir(), String(Base64.encode(key.toByteArray(), Base64.DEFAULT)))
+            var f = File(getCacheDir() + File.pathSeparator + String(Base64.encode(key.toByteArray(), Base64.DEFAULT)))
             var data = ""
             if (f.exists()) {
                 var reader: BufferedReader? = null
                 try {
                     reader = BufferedReader(FileReader(f))
-                    var currentLine: String
+                    var currentLine: String?
                     while (true) {
                         currentLine = reader.readLine()
                         if (TextUtils.isEmpty(currentLine)) break
                         data += currentLine
                     }
+                    reader.close()
                 } catch (e: IOException) {
                     e.printStackTrace()
-                } finally {
-                    reader?.close()
                 }
             }
             return data
         }
 
         fun put(key: String, data: String?) {
-            var f = File(getCacheDir(), String(Base64.encode(key.toByteArray(), Base64.DEFAULT)))
-            f.mkdir()
+            var f = File(getCacheDir() + File.pathSeparator + String(Base64.encode(key.toByteArray(), Base64.DEFAULT)))
             var out: BufferedWriter? = null
+            var fw: FileWriter? = null
             try {
-                out = BufferedWriter(FileWriter(f))
+                fw = FileWriter(f)
+                out = BufferedWriter(fw)
                 out.write(data)
             } catch (e: IOException) {
                 e.printStackTrace()
             } finally {
                 out?.flush()
                 out?.close()
+                fw?.close()
             }
         }
     }
