@@ -41,7 +41,7 @@ class MercuryContentType {
         /**
          * 纯粹字符串
          */
-        const val TEXT = "const val text/plain"
+        const val TEXT = "text/plain"
     }
 }
 

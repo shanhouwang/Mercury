@@ -2,12 +2,13 @@ package com.devin.model.mercury
 
 import android.text.TextUtils
 import com.alibaba.fastjson.JSON
-import com.devin.mercury.*
-import com.devin.mercury.annotation.Get
+import com.devin.mercury.Mercury
+import com.devin.mercury.MercuryContentType
 import com.devin.mercury.annotation.ContentType
+import com.devin.mercury.annotation.Get
 import com.devin.mercury.annotation.Post
 import okhttp3.*
-import org.json.JSONObject
+import java.io.File
 import java.io.IOException
 
 /**
@@ -126,26 +127,44 @@ abstract class MercuryRequest {
                           , successCallback: T.() -> Unit
                           , cacheCallback: T.() -> Unit
                           , failCallback: String.() -> Unit) {
-
+        startCallback.invoke()
         Mercury.mOkHttpClient.newCall(buildRequest()).enqueue(object : Callback {
             override fun onResponse(call: Call?, response: Response?) {
+                endCallback.invoke()
                 println(">>>>>${response?.body()?.string()}<<<<<")
+                try {
+                    successCallback.invoke(JSON.parseObject(response?.body()?.string(), responseClazz))
+                } catch (e: Exception) {
+                    failCallback.invoke(e?.message ?: "exception")
+                }
             }
 
             override fun onFailure(call: Call?, e: IOException?) {
+                failCallback.invoke(e?.message ?: "exception")
             }
         })
     }
 
     private fun buildRequest(): Request {
 
-        var url = this.javaClass.getAnnotation(Get::class.java)?.url
+        var fields = this@MercuryRequest.javaClass.declaredFields
+
+        var url = this.javaClass.getAnnotation(Get::class.java)?.url ?: ""
         if (!TextUtils.isEmpty(url)) {
-            return Request.Builder().url(url).get().build()
+            return Request.Builder().url(StringBuilder().apply {
+                append(url)
+                append("?")
+                fields.forEachIndexed { index, field ->
+                    field.isAccessible = true
+                    append("${field.name}=${field.get(this@MercuryRequest)}")
+                    if (index != fields.size - 1) {
+                        append("&")
+                    }
+                }
+            }.toString()).get().build()
         }
 
-        url = this.javaClass.getAnnotation(Post::class.java)?.url
-
+        url = this.javaClass.getAnnotation(Post::class.java)?.url ?: ""
         if (!TextUtils.isEmpty(url)) {
 
             var type = this.javaClass.getAnnotation(ContentType::class.java)?.type
@@ -154,9 +173,22 @@ abstract class MercuryRequest {
                     when (type) {
                         MercuryContentType.JSON -> RequestBody.create(MediaType.parse(type), JSON.toJSONString(this))
                         MercuryContentType.FORM -> FormBody.Builder().apply {
-                            this.javaClass.declaredFields.forEach {
+                            fields.forEach {
                                 it.isAccessible = true
-                                addEncoded(it.name, it.get(this@MercuryRequest).toString())
+                                println(">>>>>${it.name}, ${it.type}, ${it.get(this@MercuryRequest)}<<<<<")
+                                addEncoded(it.name, it.get(this@MercuryRequest)?.toString())
+                            }
+                        }.build()
+                        MercuryContentType.FORM_DATA -> MultipartBody.Builder().apply {
+                            fields.forEach {
+                                if (it.type == File::class.java) {
+                                    var file = it.get(this@MercuryRequest) as File
+                                    addFormDataPart(it.name
+                                            , file.name
+                                            , RequestBody.create(MediaType.parse("application/octet-stream"), file))
+                                } else {
+                                    addFormDataPart(it.name, it.get(this@MercuryRequest).toString())
+                                }
                             }
                         }.build()
                         else -> throw IllegalArgumentException("not find content type $type.")
