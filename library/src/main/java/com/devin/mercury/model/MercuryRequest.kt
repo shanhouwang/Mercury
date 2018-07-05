@@ -1,8 +1,13 @@
 package com.devin.model.mercury
 
-import com.devin.mercury.Mercury
+import android.text.TextUtils
+import com.alibaba.fastjson.JSON
+import com.devin.mercury.*
 import com.devin.mercury.annotation.Get
+import com.devin.mercury.annotation.ContentType
+import com.devin.mercury.annotation.Post
 import okhttp3.*
+import org.json.JSONObject
 import java.io.IOException
 
 /**
@@ -121,17 +126,44 @@ abstract class MercuryRequest {
                           , successCallback: T.() -> Unit
                           , cacheCallback: T.() -> Unit
                           , failCallback: String.() -> Unit) {
-        var url = this.javaClass.getAnnotation(Get::class.java)?.url
-        println(">>>>>url：$url<<<<<")
-        var request = Request.Builder().url(url).get().build()
-        Mercury.mOkHttpClient.newCall(request).enqueue(object : Callback {
-            override fun onFailure(call: Call?, e: IOException?) {
-            }
 
+        Mercury.mOkHttpClient.newCall(buildRequest()).enqueue(object : Callback {
             override fun onResponse(call: Call?, response: Response?) {
                 println(">>>>>${response?.body()?.string()}<<<<<")
             }
+
+            override fun onFailure(call: Call?, e: IOException?) {
+            }
         })
+    }
+
+    private fun buildRequest(): Request {
+
+        var url = this.javaClass.getAnnotation(Get::class.java)?.url
+        if (!TextUtils.isEmpty(url)) {
+            return Request.Builder().url(url).get().build()
+        }
+
+        url = this.javaClass.getAnnotation(Post::class.java)?.url
+
+        if (!TextUtils.isEmpty(url)) {
+
+            var type = this.javaClass.getAnnotation(ContentType::class.java)?.type
+                    ?: Mercury.contentType
+            var requestBody: RequestBody =
+                    when (type) {
+                        MercuryContentType.JSON -> RequestBody.create(MediaType.parse(type), JSON.toJSONString(this))
+                        MercuryContentType.FORM -> FormBody.Builder().apply {
+                            this.javaClass.declaredFields.forEach {
+                                it.isAccessible = true
+                                addEncoded(it.name, it.get(this@MercuryRequest).toString())
+                            }
+                        }.build()
+                        else -> throw IllegalArgumentException("not find content type $type.")
+                    }
+            return Request.Builder().url(url).post(requestBody).build()
+        }
+        return throw IllegalArgumentException("request must not null.")
     }
 
 }
