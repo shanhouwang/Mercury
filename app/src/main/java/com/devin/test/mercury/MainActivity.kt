@@ -36,6 +36,19 @@ class MainActivity : AppCompatActivity() {
             }
         })
 
+
+        BaseRequest("10086", "Devin")
+                .request(BaseResponse::class.java
+                        , successCallback = {
+                        }
+                        , failedCallback = {
+                        }
+                )
+        BaseRequest("10086", "Devin")
+                .request(BaseResponse::class.java
+                        , successCallback = {
+                }
+                )
         BaseRequest("10086", "Devin")
                 .request(BaseResponse::class.java
                         , startCallback = {
