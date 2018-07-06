@@ -32,7 +32,7 @@ class MercuryCache {
             var f = File(getCacheDir(), String(Base64.encode(key.toByteArray(), Base64.DEFAULT)))
             var data = ""
             if (f.exists()) {
-                var reader: BufferedReader? = null
+                var reader: BufferedReader?
                 try {
                     reader = BufferedReader(FileReader(f))
                     var currentLine: String?

@@ -1,5 +1,6 @@
 package com.devin.mercury
 
+import android.app.Application
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
@@ -9,11 +10,13 @@ class Mercury {
 
     companion object {
 
-        lateinit var context: Context
+        lateinit var context: Application
         lateinit var mOkHttpClient: OkHttpClient
         lateinit var contentType: String
         lateinit var host: String
         var handler = Handler(Looper.getMainLooper())
+        var activityLifecycleCallbacks: Int = 0
+        var index: Int = 0
 
         fun init(builder: MercuryBuilder) {
             mOkHttpClient = builder.okHttpClient()
@@ -25,7 +28,7 @@ class Mercury {
 
     interface MercuryBuilder {
 
-        fun getContext(): Context
+        fun getContext(): Application
 
         fun okHttpClient(): OkHttpClient
 

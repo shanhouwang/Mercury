@@ -1,5 +1,6 @@
 package com.devin.test.mercury
 
+import android.app.Application
 import android.content.Context
 import android.os.Bundle
 import android.support.v7.app.AppCompatActivity
@@ -24,8 +25,8 @@ class MainActivity : AppCompatActivity() {
                 return "http://www.baidu.com/"
             }
 
-            override fun getContext(): Context {
-                return this@MainActivity
+            override fun getContext(): Application {
+                return this@MainActivity.application
             }
 
             override fun okHttpClient(): OkHttpClient {
@@ -40,26 +41,29 @@ class MainActivity : AppCompatActivity() {
             }
         })
 
-
-        BaseRequest("10086", "Devin")
-                .request(BaseResponse::class.java
-                        , startCallback = {
-                    progressBar.visibility = View.VISIBLE
-                    println(">>>>>start: ${Thread.currentThread().id}<<<<<")
-                }
-                        , endCallback = {
-                    progressBar.visibility = View.GONE
-                    println(">>>>>end: ${Thread.currentThread().id}<<<<<")
-                }
-                        , successCallback = {
-                    println(">>>>>success: ${Thread.currentThread().id}<<<<<")
-                }
-                        , cacheCallback = {
-                    println(">>>>>cache: ${Thread.currentThread().id}<<<<<")
-                }
-                        , failedCallback = {
-                    println(">>>>>fail: ${Thread.currentThread().id}<<<<<")
-                }
-                )
+        for (i in 0 until 1000) {
+            BaseRequest("10086", "Devin：$i")
+                    .activity(this@MainActivity)
+                    .request(BaseResponse::class.java
+                            , startCallback = {
+                        progressBar.visibility = View.VISIBLE
+                        println(">>>>>start: ${Thread.currentThread().id}<<<<<")
+                    }
+                            , endCallback = {
+                        progressBar.visibility = View.GONE
+                        println(">>>>>end: ${Thread.currentThread().id}<<<<<")
+                    }
+                            , successCallback = {
+                        println(">>>>>success: ${Thread.currentThread().id}<<<<<")
+                    }
+                            , cacheCallback = {
+                        println(">>>>>cache: ${Thread.currentThread().id}<<<<<")
+                    }
+                            , failedCallback = {
+                        println(">>>>>fail: ${Thread.currentThread().id}<<<<<")
+                    }
+                    )
+        }
+        NullRequest().request(BaseResponse::class.java, successCallback = {})
     }
 }
