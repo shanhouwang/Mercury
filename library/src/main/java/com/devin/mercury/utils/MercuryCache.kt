@@ -12,9 +12,11 @@ class MercuryCache {
 
         private const val MERCURY_CACHE = "mercury_cache"
 
-        private fun getCacheDir(): String {
-            return Mercury.mOkHttpClient.cache()?.directory()?.path
-                    ?: (Mercury.context.externalCacheDir.path + File.separator + MERCURY_CACHE)
+        private fun getCacheDir(): File {
+            return File(Mercury.mOkHttpClient.cache()?.directory()?.path
+                    ?: (Mercury.context.externalCacheDir.path + File.separator + MERCURY_CACHE + File.separator)).apply {
+                if (!exists()) mkdirs()
+            }
         }
 
         fun <T> get(key: String, clazz: Class<T>): T? {
@@ -27,7 +29,7 @@ class MercuryCache {
         }
 
         fun get(key: String): String? {
-            var f = File(getCacheDir() + File.pathSeparator + String(Base64.encode(key.toByteArray(), Base64.DEFAULT)))
+            var f = File(getCacheDir(), String(Base64.encode(key.toByteArray(), Base64.DEFAULT)))
             var data = ""
             if (f.exists()) {
                 var reader: BufferedReader? = null
@@ -48,7 +50,7 @@ class MercuryCache {
         }
 
         fun put(key: String, data: String?) {
-            var f = File(getCacheDir() + File.pathSeparator + String(Base64.encode(key.toByteArray(), Base64.DEFAULT)))
+            var f = File(getCacheDir(), String(Base64.encode(key.toByteArray(), Base64.DEFAULT)))
             var out: BufferedWriter? = null
             var fw: FileWriter? = null
             try {

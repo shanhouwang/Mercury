@@ -4,6 +4,7 @@ import android.text.TextUtils
 import com.alibaba.fastjson.JSON
 import com.devin.mercury.Mercury
 import com.devin.mercury.MercuryContentType
+import com.devin.mercury.annotation.Cache
 import com.devin.mercury.annotation.ContentType
 import com.devin.mercury.annotation.Get
 import com.devin.mercury.annotation.Post
@@ -116,21 +117,8 @@ abstract class MercuryRequest {
                           , failedCallback: String.() -> Unit) {
         startCallback.invoke()
 
-        ThreadUtils
-                .get(ThreadUtils.Type.CACHED)
-                .apply {
-                    callBack {
-                        if (null == it) {
-                            return@callBack
-                        }
-                        cacheCallback.invoke(it as T)
-                    }
-                    start(object : ThreadUtils.MercuryRunnable<T>() {
-                        override fun execute(): T? {
-                            return MercuryCache.get("http://www.baidu.com", responseClazz)
-                        }
-                    })
-                }
+        /** 判断是否使用缓存 */
+        getCache(responseClazz, cacheCallback = { cacheCallback() })
 
         Mercury.mOkHttpClient.newCall(buildRequest()).enqueue(object : Callback {
             override fun onResponse(call: Call?, response: Response?) {
@@ -142,12 +130,8 @@ abstract class MercuryRequest {
                 Mercury.handler.post({
                     try {
                         successCallback.invoke(JSON.parseObject(body, responseClazz))
-                        /** 说明此时业务数据是正常的 */
-                        ThreadUtils
-                                .get(ThreadUtils.Type.CACHED)
-                                .start {
-                                    MercuryCache.put("http://www.baidu.com", body)
-                                }
+                        /** 说明此时业务数据是正常的 判断是否存储 */
+                        store(body)
                     } catch (e: Exception) {
                         Mercury.handler.post({
                             failedCallback.invoke(e.message ?: "exception")
@@ -215,6 +199,60 @@ abstract class MercuryRequest {
             return Request.Builder().url(url).post(requestBody).build()
         }
         return throw IllegalArgumentException("request must not null.")
+    }
+
+    private fun <T> getCache(responseClazz: Class<T>, cacheCallback: T.() -> Unit) {
+
+        this.javaClass.getAnnotation(Cache::class.java) ?: return@getCache
+        var key = generateKey() ?: return@getCache
+
+        ThreadUtils
+                .get(ThreadUtils.Type.CACHED)
+                .apply {
+                    callBack {
+                        if (null == it) {
+                            return@callBack
+                        }
+                        Mercury.handler.post({
+                            cacheCallback.invoke(it as T)
+                        })
+                    }
+                    start(object : ThreadUtils.MercuryRunnable<T>() {
+                        override fun execute(): T? {
+                            return MercuryCache.get(key, responseClazz)
+                        }
+                    })
+                }
+    }
+
+    private fun store(body: String?) {
+
+        body ?: return@store
+        this.javaClass.getAnnotation(Cache::class.java) ?: return@store
+        var key = generateKey() ?: return@store
+        println(">>>>>key：$key<<<<<")
+        ThreadUtils
+                .get(ThreadUtils.Type.CACHED)
+                .start {
+                    MercuryCache.put(key, body)
+                }
+    }
+
+    private fun generateKey(): String? {
+
+        var fields = this@MercuryRequest.javaClass.declaredFields
+
+        var url = this.javaClass.getAnnotation(Get::class.java)?.url
+                ?: this.javaClass.getAnnotation(Post::class.java)?.url
+                ?: return null
+        return StringBuilder().apply {
+            append(url)
+            fields.forEachIndexed { index, field ->
+                append("&")
+                field.isAccessible = true
+                append("${field.name}=${field.get(this@MercuryRequest)}")
+            }
+        }.toString()
     }
 
 }
