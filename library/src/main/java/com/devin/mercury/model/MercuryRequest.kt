@@ -4,10 +4,8 @@ import android.text.TextUtils
 import com.alibaba.fastjson.JSON
 import com.devin.mercury.Mercury
 import com.devin.mercury.MercuryContentType
+import com.devin.mercury.annotation.*
 import com.devin.mercury.annotation.Cache
-import com.devin.mercury.annotation.ContentType
-import com.devin.mercury.annotation.Get
-import com.devin.mercury.annotation.Post
 import com.devin.mercury.utils.MercuryCache
 import com.devin.mercury.utils.ThreadUtils
 import okhttp3.*
@@ -152,10 +150,11 @@ abstract class MercuryRequest {
 
         var fields = this@MercuryRequest.javaClass.declaredFields
 
-        var url = this.javaClass.getAnnotation(Get::class.java)?.url ?: ""
-        if (!TextUtils.isEmpty(url)) {
+        var get = this.javaClass.getAnnotation(Get::class.java) ?: null
+        if (null != get) {
             return Request.Builder().url(StringBuilder().apply {
-                append(url)
+                append(Mercury.host)
+                append(get?.url)
                 append("?")
                 fields.forEachIndexed { index, field ->
                     field.isAccessible = true
@@ -167,9 +166,8 @@ abstract class MercuryRequest {
             }.toString()).get().build()
         }
 
-        url = this.javaClass.getAnnotation(Post::class.java)?.url ?: ""
-        if (!TextUtils.isEmpty(url)) {
-
+        var post = this.javaClass.getAnnotation(Post::class.java) ?: null
+        if (null != post) {
             var type = this.javaClass.getAnnotation(ContentType::class.java)?.type
                     ?: Mercury.contentType
             var requestBody: RequestBody =
@@ -196,8 +194,14 @@ abstract class MercuryRequest {
                         }.build()
                         else -> throw IllegalArgumentException("not find content type $type.")
                     }
-            return Request.Builder().url(url).post(requestBody).build()
+            return Request.Builder().url(Mercury.host + post?.url).post(requestBody).build()
         }
+
+        var delete = this.javaClass.getAnnotation(Delete::class.java) ?: null
+        if (null != delete) {
+            return Request.Builder().url(Mercury.host + delete?.url).delete().build()
+        }
+
         return throw IllegalArgumentException("request must not null.")
     }
 
@@ -205,7 +209,7 @@ abstract class MercuryRequest {
 
         this.javaClass.getAnnotation(Cache::class.java) ?: return@getCache
         var key = generateKey() ?: return@getCache
-
+        println(">>>>>key：$key<<<<<")
         ThreadUtils
                 .get(ThreadUtils.Type.CACHED)
                 .apply {
@@ -247,10 +251,10 @@ abstract class MercuryRequest {
                 ?: return null
         return StringBuilder().apply {
             append(url)
-            fields.forEachIndexed { index, field ->
+            fields.forEach {
                 append("&")
-                field.isAccessible = true
-                append("${field.name}=${field.get(this@MercuryRequest)}")
+                it.isAccessible = true
+                append("${it.name}=${it.get(this@MercuryRequest)}")
             }
         }.toString()
     }

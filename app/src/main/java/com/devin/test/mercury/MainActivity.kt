@@ -20,6 +20,10 @@ class MainActivity : AppCompatActivity() {
         println(">>>>>main thread: ${Thread.currentThread().id}<<<<<")
 
         Mercury.init(object : Mercury.MercuryBuilder {
+            override fun host(): String {
+                return "http://www.baidu.com/"
+            }
+
             override fun getContext(): Context {
                 return this@MainActivity
             }
@@ -37,18 +41,6 @@ class MainActivity : AppCompatActivity() {
         })
 
 
-        BaseRequest("10086", "Devin")
-                .request(BaseResponse::class.java
-                        , successCallback = {
-                        }
-                        , failedCallback = {
-                        }
-                )
-        BaseRequest("10086", "Devin")
-                .request(BaseResponse::class.java
-                        , successCallback = {
-                }
-                )
         BaseRequest("10086", "Devin")
                 .request(BaseResponse::class.java
                         , startCallback = {
