@@ -2,18 +2,18 @@ package com.devin.test.mercury
 
 import android.app.Application
 import android.content.Context
-import android.content.Intent
 import android.os.Bundle
 import android.support.v7.app.AppCompatActivity
 import android.view.View
 import com.devin.mercury.Mercury
 import com.devin.mercury.MercuryContentType
+import com.devin.mercury.annotation.Get
 import com.devin.mercury.interceptor.HttpLoggingInterceptor
 import com.readystatesoftware.chuck.ChuckInterceptor
 import kotlinx.android.synthetic.main.activity_main.*
 import okhttp3.OkHttpClient
 
-class MainActivity : AppCompatActivity() {
+class TestActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -27,13 +27,13 @@ class MainActivity : AppCompatActivity() {
             }
 
             override fun getContext(): Application {
-                return this@MainActivity.application
+                return this@TestActivity.application
             }
 
             override fun okHttpClient(): OkHttpClient {
                 return OkHttpClient.Builder()
                         .addInterceptor(HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BODY))
-                        .addInterceptor(ChuckInterceptor(this@MainActivity).showNotification(true))
+                        .addInterceptor(ChuckInterceptor(this@TestActivity).showNotification(true))
                         .build()
             }
 
@@ -42,9 +42,9 @@ class MainActivity : AppCompatActivity() {
             }
         })
 
-        for (i in 0 until 1000) {
+        for (i in 0 until 100) {
             BaseRequest("10086", "Devin：$i")
-                    .lifecycle(this@MainActivity)
+                    .lifecycle(this@TestActivity)
                     .request(BaseResponse::class.java
                             , startCallback = {
                         progressBar.visibility = View.VISIBLE
@@ -66,7 +66,5 @@ class MainActivity : AppCompatActivity() {
                     )
         }
         NullRequest().request(BaseResponse::class.java, successCallback = {})
-
-        tv_skip.setOnClickListener { startActivity(Intent(this@MainActivity,TestActivity::class.java)) }
     }
 }

@@ -323,32 +323,36 @@ abstract class MercuryRequest {
             }
 
             override fun onActivityDestroyed(activity: Activity?) {
-                if (this@MercuryRequest.activity?.hashCode() == activity?.hashCode()) {
-                    cancel()
-                    Mercury.context.unregisterActivityLifecycleCallbacks(this)
-                    Mercury.activityLifecycleCallbacks--
-                }
+                cancelRequest(activity)
             }
         })
         Mercury.activityLifecycleCallbacks++
         println(">>>>>registerCancelEvent: ${Mercury.activityLifecycleCallbacks}<<<<<")
     }
 
-    private fun cancel() {
-        println(">>>>>cancel, tag: ${this@MercuryRequest.tag}<<<<<")
+    private fun Application.ActivityLifecycleCallbacks.cancelRequest(activity: Activity?) {
+        if (this@MercuryRequest.activity?.hashCode() == activity?.hashCode()) {
+            doIt()
+            Mercury.context.unregisterActivityLifecycleCallbacks(this)
+            Mercury.activityLifecycleCallbacks = 0
+        }
+    }
+
+    private fun doIt() {
+        println(">>>>>doIt, tag: ${this@MercuryRequest.tag}<<<<<")
         Mercury.mOkHttpClient.dispatcher().runningCalls().forEach {
-            Log.d(">>>>>cancel", ">>>>>cancel, runningCalls():  ${it.request().tag()}")
-            if (this@MercuryRequest.tag == it.request().tag()) {
-                Log.e(">>>>>cancel", ">>>>>cancel, runningCalls():  ${it.request().tag()}")
+            Log.d(">>>>>doIt", ">>>>>doIt, runningCalls():  ${it.request().tag()}, ${it.isCanceled}")
+            if (this@MercuryRequest.tag == it.request().tag() && !it.isCanceled) {
                 it.cancel()
+                Log.e(">>>>>doIt", ">>>>>doIt, runningCalls():  ${it.request().tag()}, ${it.isCanceled}")
             }
         }
 
         Mercury.mOkHttpClient.dispatcher().queuedCalls().forEach {
-            Log.d(">>>>>cancel", ">>>>>cancel, queuedCalls():  ${it.request().tag()}")
-            if (this@MercuryRequest.tag == it.request().tag()) {
-                Log.e(">>>>>cancel", ">>>>>cancel, queuedCalls():  ${it.request().tag()}")
+            Log.d(">>>>>doIt", ">>>>>doIt, queuedCalls():  ${it.request().tag()}, ${it.isCanceled}")
+            if (this@MercuryRequest.tag == it.request().tag() && !it.isCanceled) {
                 it.cancel()
+                Log.e(">>>>>doIt", ">>>>>doIt, queuedCalls():  ${it.request().tag()}, ${it.isCanceled}")
             }
         }
     }
