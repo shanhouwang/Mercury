@@ -47,13 +47,9 @@ class Mercury {
                 }
 
                 override fun onActivityDestroyed(activity: Activity?) {
-                    while (activities.iterator().hasNext()) {
-                        var it = activities.iterator().next()
-                        if (it == activity) {
-                            cancelRequest(it)
-                            activities.remove(it)
-                            break
-                        }
+                    if (activities.contains(activity)) {
+                        cancelRequest(activity)
+                        activities.remove(activity)
                     }
                 }
             })
