@@ -297,12 +297,12 @@ abstract class MercuryRequest {
     private fun registerCancelEvent() {
 
         /** 一个Activity多个请求，只会注册一次 registerActivityLifecycleCallbacks */
+        if (Mercury.activityLifecycleCallbacks > length) {
+            return@registerCancelEvent
+        }
         Mercury.context.javaClass.declaredFields.forEach {
             it.isAccessible = true
             if (it.name == "mActivityLifecycleCallbacks") {
-                if (Mercury.activityLifecycleCallbacks > length) {
-                    return@registerCancelEvent
-                }
                 length = (it.get(Mercury.context) as ArrayList<*>).size
                 Mercury.activityLifecycleCallbacks = length
                 return@forEach
