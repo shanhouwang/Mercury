@@ -1,9 +1,6 @@
 package com.devin.model.mercury
 
 import android.app.Activity
-import android.app.Application
-import android.os.Bundle
-import android.util.Log
 import com.alibaba.fastjson.JSON
 import com.devin.mercury.Mercury
 import com.devin.mercury.MercuryContentType
@@ -14,7 +11,6 @@ import com.devin.mercury.utils.ThreadUtils
 import okhttp3.*
 import java.io.File
 import java.io.IOException
-import java.util.ArrayList
 
 /**
  * @author devin
@@ -28,10 +24,9 @@ abstract class MercuryRequest {
      * 上下文
      */
     fun lifecycle(activity: Activity): MercuryRequest {
-        println("#####activity: ${Thread.currentThread().id}#####")
         this.activity = activity
         tag = activity?.javaClass?.name + activity?.hashCode()
-        registerCancelEvent()
+        Mercury.activities.add(activity)
         return this
     }
 
@@ -166,8 +161,6 @@ abstract class MercuryRequest {
 
     private fun buildRequest(): Request {
 
-        println("#####buildRequest: ${Thread.currentThread().id}#####")
-
         var fields = this@MercuryRequest.javaClass.declaredFields
 
         var get = this.javaClass.getAnnotation(Get::class.java) ?: null
@@ -291,70 +284,4 @@ abstract class MercuryRequest {
             }
         }.toString()
     }
-
-    private var length: Int = 0
-
-    private fun registerCancelEvent() {
-
-        /** 一个Activity多个请求，只会注册一次 registerActivityLifecycleCallbacks */
-        if (Mercury.activityLifecycleCallbacks > length) {
-            return@registerCancelEvent
-        }
-        Mercury.context.javaClass.declaredFields.forEach {
-            it.isAccessible = true
-            if (it.name == "mActivityLifecycleCallbacks") {
-                length = (it.get(Mercury.context) as ArrayList<*>).size
-                Mercury.activityLifecycleCallbacks = length
-                return@forEach
-            }
-        }
-        Mercury.context.registerActivityLifecycleCallbacks(object : Application.ActivityLifecycleCallbacks {
-            override fun onActivityPaused(activity: Activity?) {
-            }
-            override fun onActivityResumed(activity: Activity?) {
-            }
-            override fun onActivityStarted(activity: Activity?) {
-            }
-            override fun onActivitySaveInstanceState(activity: Activity?, outState: Bundle?) {
-            }
-            override fun onActivityStopped(activity: Activity?) {
-            }
-            override fun onActivityCreated(activity: Activity?, savedInstanceState: Bundle?) {
-            }
-
-            override fun onActivityDestroyed(activity: Activity?) {
-                cancelRequest(activity)
-            }
-        })
-        Mercury.activityLifecycleCallbacks++
-        println(">>>>>registerCancelEvent: ${Mercury.activityLifecycleCallbacks}<<<<<")
-    }
-
-    private fun Application.ActivityLifecycleCallbacks.cancelRequest(activity: Activity?) {
-        if (this@MercuryRequest.activity?.hashCode() == activity?.hashCode()) {
-            doIt()
-            Mercury.context.unregisterActivityLifecycleCallbacks(this)
-            Mercury.activityLifecycleCallbacks = 0
-        }
-    }
-
-    private fun doIt() {
-        println(">>>>>doIt, tag: ${this@MercuryRequest.tag}<<<<<")
-        Mercury.mOkHttpClient.dispatcher().runningCalls().forEach {
-            Log.d(">>>>>doIt", ">>>>>doIt, runningCalls():  ${it.request().tag()}, ${it.isCanceled}")
-            if (this@MercuryRequest.tag == it.request().tag() && !it.isCanceled) {
-                it.cancel()
-                Log.e(">>>>>doIt", ">>>>>doIt, runningCalls():  ${it.request().tag()}, ${it.isCanceled}")
-            }
-        }
-
-        Mercury.mOkHttpClient.dispatcher().queuedCalls().forEach {
-            Log.d(">>>>>doIt", ">>>>>doIt, queuedCalls():  ${it.request().tag()}, ${it.isCanceled}")
-            if (this@MercuryRequest.tag == it.request().tag() && !it.isCanceled) {
-                it.cancel()
-                Log.e(">>>>>doIt", ">>>>>doIt, queuedCalls():  ${it.request().tag()}, ${it.isCanceled}")
-            }
-        }
-    }
-
 }

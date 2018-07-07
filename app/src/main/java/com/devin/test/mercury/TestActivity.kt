@@ -1,17 +1,9 @@
 package com.devin.test.mercury
 
-import android.app.Application
-import android.content.Context
 import android.os.Bundle
 import android.support.v7.app.AppCompatActivity
 import android.view.View
-import com.devin.mercury.Mercury
-import com.devin.mercury.MercuryContentType
-import com.devin.mercury.annotation.Get
-import com.devin.mercury.interceptor.HttpLoggingInterceptor
-import com.readystatesoftware.chuck.ChuckInterceptor
 import kotlinx.android.synthetic.main.activity_main.*
-import okhttp3.OkHttpClient
 
 class TestActivity : AppCompatActivity() {
 
@@ -20,27 +12,6 @@ class TestActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         println(">>>>>main thread: ${Thread.currentThread().id}<<<<<")
-
-        Mercury.init(object : Mercury.MercuryBuilder {
-            override fun host(): String {
-                return "http://www.baidu.com/"
-            }
-
-            override fun getContext(): Application {
-                return this@TestActivity.application
-            }
-
-            override fun okHttpClient(): OkHttpClient {
-                return OkHttpClient.Builder()
-                        .addInterceptor(HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BODY))
-                        .addInterceptor(ChuckInterceptor(this@TestActivity).showNotification(true))
-                        .build()
-            }
-
-            override fun contentType(): String {
-                return MercuryContentType.JSON
-            }
-        })
 
         for (i in 0 until 100) {
             BaseRequest("10086", "Devin：$i")

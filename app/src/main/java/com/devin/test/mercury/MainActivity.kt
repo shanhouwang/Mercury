@@ -21,27 +21,6 @@ class MainActivity : AppCompatActivity() {
 
         println(">>>>>main thread: ${Thread.currentThread().id}<<<<<")
 
-        Mercury.init(object : Mercury.MercuryBuilder {
-            override fun host(): String {
-                return "http://www.baidu.com/"
-            }
-
-            override fun getContext(): Application {
-                return this@MainActivity.application
-            }
-
-            override fun okHttpClient(): OkHttpClient {
-                return OkHttpClient.Builder()
-                        .addInterceptor(HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BODY))
-                        .addInterceptor(ChuckInterceptor(this@MainActivity).showNotification(true))
-                        .build()
-            }
-
-            override fun contentType(): String {
-                return MercuryContentType.JSON
-            }
-        })
-
         for (i in 0 until 1000) {
             BaseRequest("10086", "Devin：$i")
                     .lifecycle(this@MainActivity)
@@ -66,7 +45,9 @@ class MainActivity : AppCompatActivity() {
                     )
         }
         NullRequest().request(BaseResponse::class.java, successCallback = {})
-
-        tv_skip.setOnClickListener { startActivity(Intent(this@MainActivity,TestActivity::class.java)) }
+        tv_skip.setOnClickListener {
+            startActivity(Intent(this@MainActivity, TestActivity::class.java))
+            finish()
+        }
     }
 }
