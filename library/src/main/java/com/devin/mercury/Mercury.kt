@@ -19,7 +19,7 @@ class Mercury {
         lateinit var contentType: String
         lateinit var host: String
         var handler = Handler(Looper.getMainLooper())
-        var activities = HashSet<Activity>()
+        var activities = mutableSetOf<Activity>()
 
 
         fun init(builder: MercuryBuilder) {
