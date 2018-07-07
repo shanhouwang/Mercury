@@ -41,9 +41,9 @@ class MainActivity : AppCompatActivity() {
             }
         })
 
-        for (i in 0 until 1000) {
+        for (i in 0 until 100) {
             BaseRequest("10086", "Devin：$i")
-                    .activity(this@MainActivity)
+                    .lifecycle(this@MainActivity)
                     .request(BaseResponse::class.java
                             , startCallback = {
                         progressBar.visibility = View.VISIBLE

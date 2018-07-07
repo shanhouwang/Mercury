@@ -3,6 +3,7 @@ package com.devin.model.mercury
 import android.app.Activity
 import android.app.Application
 import android.os.Bundle
+import android.util.Log
 import com.alibaba.fastjson.JSON
 import com.devin.mercury.Mercury
 import com.devin.mercury.MercuryContentType
@@ -20,14 +21,16 @@ import java.util.ArrayList
  */
 abstract class MercuryRequest {
 
-    private var activity: Activity? = null
+    private lateinit var activity: Activity
     private var tag: String? = null
 
     /**
      * 上下文
      */
-    fun activity(activity: Activity): MercuryRequest {
+    fun lifecycle(activity: Activity): MercuryRequest {
+        println("#####activity: ${Thread.currentThread().id}#####")
         this.activity = activity
+        tag = activity?.javaClass?.name + activity?.hashCode()
         registerCancelEvent()
         return this
     }
@@ -163,22 +166,28 @@ abstract class MercuryRequest {
 
     private fun buildRequest(): Request {
 
+        println("#####buildRequest: ${Thread.currentThread().id}#####")
+
         var fields = this@MercuryRequest.javaClass.declaredFields
 
         var get = this.javaClass.getAnnotation(Get::class.java) ?: null
         if (null != get) {
-            return Request.Builder().url(StringBuilder().apply {
-                append(Mercury.host)
-                append(get?.url)
-                append("?")
-                fields?.forEachIndexed { index, field ->
-                    field.isAccessible = true
-                    append("${field.name}=${field.get(this@MercuryRequest)}")
-                    if (index != fields.size - 1) {
-                        append("&")
-                    }
-                }
-            }.toString()).apply { activity ?: tag(generateTag()) }.get().build()
+            return Request.Builder()
+                    .url(StringBuilder().apply {
+                        append(Mercury.host)
+                        append(get?.url)
+                        append("?")
+                        fields?.forEachIndexed { index, field ->
+                            field.isAccessible = true
+                            append("${field.name}=${field.get(this@MercuryRequest)}")
+                            if (index != fields.size - 1) {
+                                append("&")
+                            }
+                        }
+                    }.toString())
+                    .tag(tag)
+                    .get()
+                    .build()
         }
 
         var post = this.javaClass.getAnnotation(Post::class.java) ?: null
@@ -211,7 +220,7 @@ abstract class MercuryRequest {
                     }
             return Request.Builder()
                     .url(Mercury.host + post?.url)
-                    .apply { activity ?: generateTag() }
+                    .tag(tag)
                     .post(requestBody)
                     .build()
         }
@@ -220,7 +229,7 @@ abstract class MercuryRequest {
         if (null != delete) {
             return Request.Builder()
                     .url(Mercury.host + delete?.url)
-                    .apply { activity ?: generateTag() }
+                    .tag(tag)
                     .delete()
                     .build()
         }
@@ -265,11 +274,6 @@ abstract class MercuryRequest {
                 }
     }
 
-    private fun generateTag(): String? {
-        tag = tag ?: activity?.javaClass?.name + activity?.hashCode()
-        return tag
-    }
-
     private fun generateKey(): String? {
 
         var fields = this@MercuryRequest.javaClass.declaredFields
@@ -288,21 +292,22 @@ abstract class MercuryRequest {
         }.toString()
     }
 
+    private var length: Int = 0
+
     private fun registerCancelEvent() {
+
+        /** 一个Activity多个请求，只会注册一次 registerActivityLifecycleCallbacks */
         Mercury.context.javaClass.declaredFields.forEach {
             it.isAccessible = true
             if (it.name == "mActivityLifecycleCallbacks") {
-                if (Mercury.index == 0) {
-                    Mercury.activityLifecycleCallbacks = (it.get(Mercury.context) as ArrayList<*>).size
-                }
-                if (Mercury.index > 0 && Mercury.activityLifecycleCallbacks + 1 == (it.get(Mercury.context) as ArrayList<*>).size) {
+                if (Mercury.activityLifecycleCallbacks > length) {
                     return@registerCancelEvent
                 }
-                Mercury.index++
+                length = (it.get(Mercury.context) as ArrayList<*>).size
+                Mercury.activityLifecycleCallbacks = length
                 return@forEach
             }
         }
-        println(">>>>>registerCancelEvent: ${Mercury.index}<<<<<")
         Mercury.context.registerActivityLifecycleCallbacks(object : Application.ActivityLifecycleCallbacks {
             override fun onActivityPaused(activity: Activity?) {
             }
@@ -320,26 +325,32 @@ abstract class MercuryRequest {
             override fun onActivityDestroyed(activity: Activity?) {
                 if (this@MercuryRequest.activity?.hashCode() == activity?.hashCode()) {
                     cancel()
-                    this@MercuryRequest.activity?.application?.unregisterActivityLifecycleCallbacks(this)
+                    Mercury.context.unregisterActivityLifecycleCallbacks(this)
+                    Mercury.activityLifecycleCallbacks--
                 }
             }
         })
+        Mercury.activityLifecycleCallbacks++
+        println(">>>>>registerCancelEvent: ${Mercury.activityLifecycleCallbacks}<<<<<")
     }
 
     private fun cancel() {
-
+        println(">>>>>cancel, tag: ${this@MercuryRequest.tag}<<<<<")
         Mercury.mOkHttpClient.dispatcher().runningCalls().forEach {
+            Log.d(">>>>>cancel", ">>>>>cancel, runningCalls():  ${it.request().tag()}")
             if (this@MercuryRequest.tag == it.request().tag()) {
+                Log.e(">>>>>cancel", ">>>>>cancel, runningCalls():  ${it.request().tag()}")
                 it.cancel()
             }
         }
 
         Mercury.mOkHttpClient.dispatcher().queuedCalls().forEach {
+            Log.d(">>>>>cancel", ">>>>>cancel, queuedCalls():  ${it.request().tag()}")
             if (this@MercuryRequest.tag == it.request().tag()) {
+                Log.e(">>>>>cancel", ">>>>>cancel, queuedCalls():  ${it.request().tag()}")
                 it.cancel()
             }
         }
-
     }
 
 }

@@ -16,7 +16,6 @@ class Mercury {
         lateinit var host: String
         var handler = Handler(Looper.getMainLooper())
         var activityLifecycleCallbacks: Int = 0
-        var index: Int = 0
 
         fun init(builder: MercuryBuilder) {
             mOkHttpClient = builder.okHttpClient()
