@@ -1,6 +1,8 @@
 package com.devin.model.mercury
 
+import android.annotation.TargetApi
 import android.app.Activity
+import android.os.Build
 import com.alibaba.fastjson.JSON
 import com.devin.mercury.Mercury
 import com.devin.mercury.MercuryContentType
@@ -245,32 +247,46 @@ abstract class MercuryRequest {
         /** 判断是否使用缓存 */
         getCache(responseClazz, cacheCallback = { cacheCallback() })
 
-        Mercury.mOkHttpClient.newCall(buildRequest()).enqueue(object : Callback {
-            override fun onResponse(call: Call?, response: Response?) {
-                Mercury.handler.post({
-                    endCallback.invoke()
-                })
-                var body = response?.body()?.string()
-                println(">>>>>onResponse: $body<<<<<")
-                Mercury.handler.post({
-                    try {
-                        successCallback.invoke(JSON.parseObject(body, responseClazz))
-                        /** 说明此时业务数据是正常的 判断是否存储 */
-                        store(body)
-                    } catch (e: Exception) {
-                        Mercury.handler.post({
-                            failedCallback.invoke(e.message ?: "exception")
+        ThreadUtils
+                .get(ThreadUtils.Type.CACHED)
+                .apply {
+                    callBack {
+                        if (null == it) {
+                            return@callBack
+                        }
+                        Mercury.mOkHttpClient.newCall(it as Request).enqueue(object : Callback {
+                            override fun onResponse(call: Call?, response: Response?) {
+                                Mercury.handler.post({
+                                    endCallback.invoke()
+                                })
+                                var body = response?.body()?.string()
+                                println(">>>>>onResponse: $body<<<<<")
+                                Mercury.handler.post({
+                                    try {
+                                        successCallback.invoke(JSON.parseObject(body, responseClazz))
+                                        /** 说明此时业务数据是正常的 判断是否存储 */
+                                        store(body)
+                                    } catch (e: Exception) {
+                                        Mercury.handler.post({
+                                            failedCallback.invoke(e.message ?: "exception")
+                                        })
+                                    }
+                                })
+                            }
+
+                            override fun onFailure(call: Call?, e: IOException?) {
+                                Mercury.handler.post({
+                                    failedCallback.invoke(e?.message ?: "exception")
+                                })
+                            }
                         })
                     }
-                })
-            }
-
-            override fun onFailure(call: Call?, e: IOException?) {
-                Mercury.handler.post({
-                    failedCallback.invoke(e?.message ?: "exception")
-                })
-            }
-        })
+                    start(object : ThreadUtils.MercuryRunnable<Request>() {
+                        override fun execute(): Request {
+                            return buildRequest()
+                        }
+                    })
+                }
     }
 
     private fun buildRequest(): Request {
@@ -285,7 +301,7 @@ abstract class MercuryRequest {
                         append(get?.url)
                         append("?")
                         for (i in fields.indices) {
-                                var h = fields[i].getAnnotation(Header::class.java)
+                            var h = fields[i].getAnnotation(Header::class.java)
                             if (null != h) {
                                 continue
                             }
@@ -297,18 +313,7 @@ abstract class MercuryRequest {
                         }
                     }.toString())
                     .apply {
-                        for (i in fields.indices) {
-                            var h = fields[i].getAnnotation(Header::class.java)
-                            if (null != h) {
-                                try {
-                                    var headers = fields[i].get(this@MercuryRequest) as Map<String, String>
-                                    headers.forEach { t, u -> addHeader(t, u) }
-                                    break
-                                } catch (e: ClassCastException) {
-                                    throw IllegalArgumentException("Header must be a Map<String,String>.")
-                                }
-                            }
-                        }
+                        getHeaders(this, this@MercuryRequest.javaClass)
                     }
                     .tag(tag)
                     .get()
@@ -360,6 +365,33 @@ abstract class MercuryRequest {
         }
 
         return throw IllegalArgumentException("request must not null.")
+    }
+
+    private fun <T> getHeaders(request: Request.Builder, clazz: Class<T>) {
+        if (clazz == Object::class.java) {
+            return@getHeaders
+        }
+        var fields = clazz.declaredFields
+        for (i in fields.indices) {
+            var it = fields[i]
+            it.isAccessible = true
+            var h = it.getAnnotation(Header::class.java)
+            if (null != h) {
+                try {
+                    var headers = it.get(this@MercuryRequest) as MutableMap<String, String>
+                    request.headers(Headers.Builder().apply {
+                        headers.mapValues { (k, v) -> add(k, v) }
+                    }.build())
+                    return@getHeaders
+                } catch (e: ClassCastException) {
+                    throw IllegalArgumentException("Header must be a Map<String,String>.")
+                }
+            } else {
+                if (i == fields.lastIndex) {
+                    getHeaders(request, clazz.superclass)
+                }
+            }
+        }
     }
 
     private fun <T> getCache(responseClazz: Class<T>, cacheCallback: T.() -> Unit) {

@@ -59,7 +59,7 @@ class Mercury {
                     } else {
                         /** 如果用户调用了 requestByLifecycle 方法 */
                         ThreadUtils.get(ThreadUtils.Type.CACHED).start({
-                            cancelRequest()
+                            cancelRequest(activity?.javaClass?.name + activity?.hashCode() + "requestByLifecycle")
                         })
                     }
                 }
@@ -80,24 +80,6 @@ class Mercury {
                 if (tag == it.request().tag() && !it.isCanceled) {
                     it.cancel()
                     Log.e("cancelRequest", ">>>>>cancelRequest queuedCalls():  ${it.request().tag()}, ${it.isCanceled}")
-                }
-            }
-        }
-
-        private fun cancelRequest() {
-            Mercury.mOkHttpClient.dispatcher().runningCalls().forEach {
-                Log.d("cancelRequest", ">>>>>cancelRequest, thread：${Thread.currentThread().id}, runningCalls():  ${it.request().tag()}, ${it.isCanceled}")
-                if (it.request().tag()?.toString()?.contains("requestByLifecycle") == true && !it.isCanceled) {
-                    it.cancel()
-                    Log.e("cancelRequest", ">>>>>cancelRequest, runningCalls():  ${it.request().tag()}, ${it.isCanceled}")
-                }
-            }
-
-            Mercury.mOkHttpClient.dispatcher().queuedCalls().forEach {
-                Log.d("cancelRequest", ">>>>>cancelRequest, thread：${Thread.currentThread().id}, queuedCalls():  ${it.request().tag()}, ${it.isCanceled}")
-                if (it.request().tag()?.toString()?.contains("requestByLifecycle") == true && !it.isCanceled) {
-                    it.cancel()
-                    Log.e("cancelRequest", ">>>>>cancelRequest, queuedCalls():  ${it.request().tag()}, ${it.isCanceled}")
                 }
             }
         }
