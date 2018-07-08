@@ -1,4 +1,28 @@
 # Mercury
+## 初始化
+
+```
+Mercury.init(object : Mercury.MercuryBuilder {
+	override fun host(): String {
+		return "http://www.baidu.com/"
+	}
+
+	override fun getContext(): Application {
+		return this@App
+	}
+
+	override fun okHttpClient(): OkHttpClient {
+		return OkHttpClient.Builder()
+            .addInterceptor(HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BODY))
+                        .addInterceptor(ChuckInterceptor(this@App).showNotification(true))
+                        .build()
+	}
+
+	override fun contentType(): String {
+		return MercuryContentType.JSON
+	}
+})
+```
 ## 使用方法
 ```
 BaseRequest("10086", "Devin")
