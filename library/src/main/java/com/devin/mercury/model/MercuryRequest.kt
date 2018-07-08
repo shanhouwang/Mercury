@@ -1,8 +1,6 @@
 package com.devin.model.mercury
 
-import android.annotation.TargetApi
 import android.app.Activity
-import android.os.Build
 import com.alibaba.fastjson.JSON
 import com.devin.mercury.Mercury
 import com.devin.mercury.MercuryContentType
@@ -13,7 +11,6 @@ import com.devin.mercury.utils.ThreadUtils
 import okhttp3.*
 import java.io.File
 import java.io.IOException
-import java.util.Map
 
 /**
  * @author devin
