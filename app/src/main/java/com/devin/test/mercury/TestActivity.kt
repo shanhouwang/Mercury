@@ -14,7 +14,7 @@ class TestActivity : AppCompatActivity() {
         println(">>>>>main thread: ${Thread.currentThread().id}<<<<<")
 
         for (i in 0 until 100) {
-            BaseRequest("10086", "Devin：$i")
+            MainRequest("10086", "Devin：$i")
                     .requestByLifecycle(BaseResponse::class.java
                             , startCallback = {
                         progressBar.visibility = View.VISIBLE

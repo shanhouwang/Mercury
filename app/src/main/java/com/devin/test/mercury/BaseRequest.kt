@@ -1,9 +1,11 @@
 package com.devin.test.mercury
 
-import com.devin.mercury.annotation.Cache
-import com.devin.mercury.annotation.Get
 import com.devin.model.mercury.MercuryRequest
 
-@Get(url = "")
-@Cache
-class BaseRequest(var id: String, var name: String) : MercuryRequest()
+open class BaseRequest : MercuryRequest() {
+
+
+    var headers = HashMap<String, String>().apply {
+        put("x-request-token", "devin")
+    }
+}

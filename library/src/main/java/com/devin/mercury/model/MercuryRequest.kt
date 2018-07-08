@@ -11,6 +11,7 @@ import com.devin.mercury.utils.ThreadUtils
 import okhttp3.*
 import java.io.File
 import java.io.IOException
+import java.util.Map
 
 /**
  * @author devin
@@ -283,14 +284,32 @@ abstract class MercuryRequest {
                         append(Mercury.host)
                         append(get?.url)
                         append("?")
-                        fields?.forEachIndexed { index, field ->
-                            field.isAccessible = true
-                            append("${field.name}=${field.get(this@MercuryRequest)}")
-                            if (index != fields.size - 1) {
+                        for (i in fields.indices) {
+                                var h = fields[i].getAnnotation(Header::class.java)
+                            if (null != h) {
+                                continue
+                            }
+                            fields[i].isAccessible = true
+                            append("${fields[i].name}=${fields[i].get(this@MercuryRequest)}")
+                            if (i != fields.size - 1) {
                                 append("&")
                             }
                         }
                     }.toString())
+                    .apply {
+                        for (i in fields.indices) {
+                            var h = fields[i].getAnnotation(Header::class.java)
+                            if (null != h) {
+                                try {
+                                    var headers = fields[i].get(this@MercuryRequest) as Map<String, String>
+                                    headers.forEach { t, u -> addHeader(t, u) }
+                                    break
+                                } catch (e: ClassCastException) {
+                                    throw IllegalArgumentException("Header must be a Map<String,String>.")
+                                }
+                            }
+                        }
+                    }
                     .tag(tag)
                     .get()
                     .build()

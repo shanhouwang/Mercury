@@ -14,8 +14,8 @@ class MainActivity : AppCompatActivity() {
 
         println(">>>>>main thread: ${Thread.currentThread().id}<<<<<")
 
-        for (i in 0 until 1000) {
-            BaseRequest("10086", "Devin：$i")
+        for (i in 0 until 1) {
+            MainRequest("10086", "Devin：$i")
                     .requestByLifecycle(BaseResponse::class.java
                             , startCallback = {
                         progressBar.visibility = View.VISIBLE
@@ -36,7 +36,6 @@ class MainActivity : AppCompatActivity() {
                     }
                     )
         }
-        NullRequest().request(BaseResponse::class.java, successCallback = {})
         tv_skip.setOnClickListener {
             startActivity(Intent(this@MainActivity, TestActivity::class.java))
             finish()
