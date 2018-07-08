@@ -17,14 +17,12 @@ import java.io.IOException
  */
 abstract class MercuryRequest {
 
-    private lateinit var activity: Activity
     private var tag: String? = null
 
     /**
-     * 上下文
+     * 请求会根据Activity的销毁而取消
      */
     fun lifecycle(activity: Activity): MercuryRequest {
-        this.activity = activity
         tag = activity?.javaClass?.name + activity?.hashCode()
         Mercury.activities.add(activity)
         return this
