@@ -1,4 +1,14 @@
 # Mercury
+## 简介
+
+```
+一个封装了Okhttp的library
+```
+## 引入项目
+
+```
+implementation 'com.devin:mercury:0.0.1-beta-1'
+```
 ## 初始化
 
 ```
