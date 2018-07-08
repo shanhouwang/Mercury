@@ -9,14 +9,13 @@ class TestActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+        setContentView(R.layout.activity_test)
 
         println(">>>>>main thread: ${Thread.currentThread().id}<<<<<")
 
         for (i in 0 until 100) {
             BaseRequest("10086", "Devin：$i")
-                    .lifecycle(this@TestActivity)
-                    .request(BaseResponse::class.java
+                    .requestByLifecycle(BaseResponse::class.java
                             , startCallback = {
                         progressBar.visibility = View.VISIBLE
                         println(">>>>>start: ${Thread.currentThread().id}<<<<<")

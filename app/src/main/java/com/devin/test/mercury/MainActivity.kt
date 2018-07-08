@@ -1,17 +1,10 @@
 package com.devin.test.mercury
 
-import android.app.Application
-import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.support.v7.app.AppCompatActivity
 import android.view.View
-import com.devin.mercury.Mercury
-import com.devin.mercury.MercuryContentType
-import com.devin.mercury.interceptor.HttpLoggingInterceptor
-import com.readystatesoftware.chuck.ChuckInterceptor
 import kotlinx.android.synthetic.main.activity_main.*
-import okhttp3.OkHttpClient
 
 class MainActivity : AppCompatActivity() {
 
@@ -23,8 +16,7 @@ class MainActivity : AppCompatActivity() {
 
         for (i in 0 until 1000) {
             BaseRequest("10086", "Devin：$i")
-                    .lifecycle(this@MainActivity)
-                    .request(BaseResponse::class.java
+                    .requestByLifecycle(BaseResponse::class.java
                             , startCallback = {
                         progressBar.visibility = View.VISIBLE
                         println(">>>>>start: ${Thread.currentThread().id}<<<<<")

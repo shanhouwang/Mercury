@@ -118,6 +118,121 @@ abstract class MercuryRequest {
                 , failedCallback = { failedCallback() })
     }
 
+    /**
+     * 请求会根据Activity的销毁而销毁
+     *
+     * @param responseClazz 回调类型
+     * @param successCallback 成功回调方法
+     */
+    fun <T> requestByLifecycle(responseClazz: Class<T>
+                    , successCallback: T.() -> Unit) {
+        buildByLifecycle(responseClazz
+                , startCallback = {}
+                , endCallback = {}
+                , successCallback = { successCallback() }
+                , cacheCallback = {}
+                , failedCallback = {})
+    }
+
+    /**
+     * 请求会根据Activity的销毁而销毁
+     *
+     * @param responseClazz 回调类型
+     * @param successCallback 成功回调方法
+     * @param failedCallback 失败回调方法
+     */
+    fun <T> requestByLifecycle(responseClazz: Class<T>
+                    , successCallback: T.() -> Unit
+                    , failedCallback: String.() -> Unit) {
+        buildByLifecycle(responseClazz
+                , startCallback = {}
+                , endCallback = {}
+                , successCallback = { successCallback() }
+                , cacheCallback = {}
+                , failedCallback = { failedCallback() })
+    }
+
+    /**
+     * 请求会根据Activity的销毁而销毁
+     *
+     * @param responseClazz 回调类型
+     * @param startCallback 调用网络接口之前的回调
+     * @param endCallback 调用网络接口之后的回调
+     * @param successCallback 成功回调方法
+     */
+    fun <T> requestByLifecycle(responseClazz: Class<T>
+                    , startCallback: () -> Unit
+                    , endCallback: () -> Unit
+                    , successCallback: T.() -> Unit) {
+        buildByLifecycle(responseClazz
+                , startCallback = { startCallback() }
+                , endCallback = { endCallback() }
+                , successCallback = { successCallback() }
+                , cacheCallback = {}
+                , failedCallback = {})
+    }
+
+    /**
+     * 请求会根据Activity的销毁而销毁
+     *
+     * @param responseClazz 回调类型
+     * @param startCallback 调用网络接口之前的回调
+     * @param endCallback 调用网络接口之后的回调
+     * @param successCallback 成功回调方法
+     * @param failedCallback 失败回调方法
+     */
+    fun <T> requestByLifecycle(responseClazz: Class<T>
+                    , startCallback: () -> Unit
+                    , endCallback: () -> Unit
+                    , successCallback: T.() -> Unit
+                    , failedCallback: String.() -> Unit) {
+        buildByLifecycle(responseClazz
+                , startCallback = { startCallback() }
+                , endCallback = { endCallback() }
+                , successCallback = { successCallback() }
+                , cacheCallback = {}
+                , failedCallback = { failedCallback() })
+    }
+
+    /**
+     * 请求会根据Activity的销毁而销毁
+     *
+     * @param responseClazz 回调类型
+     * @param startCallback 调用网络接口之前的回调
+     * @param endCallback 调用网络接口之后的回调
+     * @param successCallback 成功回调方法
+     * @param cacheCallback 本地缓存回调
+     * @param failedCallback 失败回调方法
+     */
+    fun <T> requestByLifecycle(responseClazz: Class<T>
+                               , startCallback: () -> Unit
+                               , endCallback: () -> Unit
+                               , successCallback: T.() -> Unit
+                               , cacheCallback: T.() -> Unit
+                               , failedCallback: String.() -> Unit) {
+        buildByLifecycle(responseClazz
+                , startCallback = { startCallback() }
+                , endCallback = { endCallback() }
+                , successCallback = { successCallback() }
+                , cacheCallback = { cacheCallback() }
+                , failedCallback = { failedCallback() })
+    }
+
+    private fun <T> buildByLifecycle(responseClazz: Class<T>
+                                     , startCallback: () -> Unit
+                                     , endCallback: () -> Unit
+                                     , successCallback: T.() -> Unit
+                                     , cacheCallback: T.() -> Unit
+                                     , failedCallback: String.() -> Unit) {
+        tag = tag ?: Mercury.getCurActivity()?.javaClass?.name + Mercury.getCurActivity()?.hashCode() + "requestByLifecycle"
+        build(responseClazz
+                , startCallback = { startCallback() }
+                , endCallback = { endCallback() }
+                , successCallback = { successCallback() }
+                , cacheCallback = { cacheCallback() }
+                , failedCallback = { failedCallback() })
+    }
+
     private fun <T> build(responseClazz: Class<T>
                           , startCallback: () -> Unit
                           , endCallback: () -> Unit
