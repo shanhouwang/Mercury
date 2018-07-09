@@ -1,11 +1,14 @@
 package com.devin.model.mercury
 
 import android.app.Activity
+import android.util.Base64
 import com.alibaba.fastjson.JSON
+import com.alibaba.fastjson.annotation.JSONField
 import com.devin.mercury.Mercury
 import com.devin.mercury.MercuryContentType
 import com.devin.mercury.annotation.*
 import com.devin.mercury.annotation.Cache
+import com.devin.mercury.model.MercuryBuildHeaders
 import com.devin.mercury.utils.MercuryCache
 import com.devin.mercury.utils.ThreadUtils
 import okhttp3.*
@@ -17,7 +20,10 @@ import java.io.IOException
  */
 abstract class MercuryRequest {
 
+    @JSONField(serialize = false)
     private var tag: String? = null
+    @JSONField(serialize = false)
+    private var mercuryBuildHeaders: MercuryBuildHeaders? = null
 
     /**
      * 请求会根据Activity的销毁而取消
@@ -310,7 +316,7 @@ abstract class MercuryRequest {
                         }
                     }.toString())
                     .apply {
-                        getHeaders(this, this@MercuryRequest.javaClass)
+                        buildHeaders(this@MercuryRequest, this)
                     }
                     .tag(tag)
                     .get()
@@ -364,9 +370,17 @@ abstract class MercuryRequest {
         return throw IllegalArgumentException("request must not null.")
     }
 
-    private fun <T> getHeaders(request: Request.Builder, clazz: Class<T>) {
-        if (clazz == Object::class.java) {
-            return@getHeaders
+    private fun buildHeaders(request: MercuryRequest, builder: Request.Builder) {
+        request.getHeadersByAnnotation(builder, this@MercuryRequest.javaClass)
+        if (this@MercuryRequest is MercuryBuildHeaders) {
+            mercuryBuildHeaders = this@MercuryRequest
+            mercuryBuildHeaders?.buildHeaders()?.mapValues { (k, v) -> builder.addHeader(k, Base64.encodeToString(v.toByteArray(), Base64.NO_WRAP)) }
+        }
+    }
+
+    private fun <T> getHeadersByAnnotation(request: Request.Builder, clazz: Class<T>) {
+        if (clazz == MercuryRequest::class.java) {
+            return@getHeadersByAnnotation
         }
         var fields = clazz.declaredFields
         for (i in fields.indices) {
@@ -377,15 +391,15 @@ abstract class MercuryRequest {
                 try {
                     var headers = it.get(this@MercuryRequest) as MutableMap<String, String>
                     request.headers(Headers.Builder().apply {
-                        headers.mapValues { (k, v) -> add(k, v) }
+                        headers.mapValues { (k, v) -> add(k, Base64.encodeToString(v.toByteArray(), Base64.NO_WRAP)) }
                     }.build())
-                    return@getHeaders
+                    return@getHeadersByAnnotation
                 } catch (e: ClassCastException) {
-                    throw IllegalArgumentException("Header must be a Map<String,String>.")
+                    throw IllegalArgumentException("Header must be a MutableMap<String,String>.")
                 }
             } else {
                 if (i == fields.lastIndex) {
-                    getHeaders(request, clazz.superclass)
+                    getHeadersByAnnotation(request, clazz.superclass)
                 }
             }
         }
