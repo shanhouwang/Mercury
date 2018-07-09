@@ -355,6 +355,9 @@ abstract class MercuryRequest {
                     .url(Mercury.host + post?.url)
                     .tag(tag)
                     .post(requestBody)
+                    .apply {
+                        buildHeaders(this@MercuryRequest, this)
+                    }
                     .build()
         }
 
@@ -364,6 +367,9 @@ abstract class MercuryRequest {
                     .url(Mercury.host + delete?.url)
                     .tag(tag)
                     .delete()
+                    .apply {
+                        buildHeaders(this@MercuryRequest, this)
+                    }
                     .build()
         }
 
