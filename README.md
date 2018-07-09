@@ -34,7 +34,18 @@ Mercury.init(object : Mercury.MercuryBuilder {
 })
 ```
 ## 使用方法
-
+## 构建RequestModel
+### 1、Get
+```
+@Get(url = "")
+class BaseRequest : MercuryRequest()
+```
+### 2、Post
+```
+@Post(url = "")
+@ContentType(type = MercuryContentType.FORM)
+class BaseRequest : MercuryRequest()
+```
 ### request
 ```
 BaseRequest("10086", "Devin")
