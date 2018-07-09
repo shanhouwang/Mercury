@@ -7,7 +7,7 @@
 ## 引入项目
 
 ```
-implementation 'com.devin:mercury:0.0.1-beta-1'
+implementation 'com.devin:mercury:0.0.1-beta-2'
 ```
 ## 初始化
 
@@ -34,6 +34,8 @@ Mercury.init(object : Mercury.MercuryBuilder {
 })
 ```
 ## 使用方法
+
+### request
 ```
 BaseRequest("10086", "Devin")
 	.request(BaseResponse::class.java
@@ -56,4 +58,30 @@ BaseRequest("10086", "Devin")
 	}
 )
 ```
+### requestByLifecycle：请求会根据Activity的销毁而销毁
+
+```
+MainRequest("10086", "Devin：$i")
+	.requestByLifecycle(BaseResponse::class.java
+		, startCallback = {
+		progressBar.visibility = View.VISIBLE
+		println(">>>>>start: ${Thread.currentThread().id}<<<<<")
+	}
+	, endCallback = {
+		progressBar.visibility = View.GONE
+		println(">>>>>end: ${Thread.currentThread().id}<<<<<")
+	}
+	, successCallback = {
+		println(">>>>>success: ${Thread.currentThread().id}<<<<<")
+	}
+	, cacheCallback = {
+		println(">>>>>cache: ${Thread.currentThread().id}<<<<<")
+	}
+	, failedCallback = {
+		println(">>>>>fail: ${Thread.currentThread().id}<<<<<")
+	}
+	)
+}
+```
+
 
