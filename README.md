@@ -7,7 +7,7 @@
 ## 引入项目
 
 ```
-implementation 'com.devin:mercury:0.0.1-beta-2'
+implementation 'com.devin:mercury:0.0.1'
 ```
 ## 初始化
 
