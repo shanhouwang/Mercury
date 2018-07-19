@@ -26,7 +26,7 @@ class Mercury {
         fun init(builder: MercuryBuilder) {
             Collections.synchronizedCollection(activities)
             mOkHttpClient = builder.okHttpClient()
-            contentType = builder.contentType()
+            contentType = builder.defaultContentType()
             context = builder.getContext()
             host = builder.host()
             registerActivityLifecycleCallbacks()
@@ -101,7 +101,7 @@ class Mercury {
 
         fun okHttpClient(): OkHttpClient
 
-        fun contentType(): String
+        fun defaultContentType(): String
 
         /** http://www.baidu.com/ */
         fun host(): String

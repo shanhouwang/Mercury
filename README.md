@@ -28,7 +28,7 @@ Mercury.init(object : Mercury.MercuryBuilder {
                         .build()
 	}
 
-	override fun contentType(): String {
+	override fun defaultContentType(): String {
 		return MercuryContentType.JSON
 	}
 })
