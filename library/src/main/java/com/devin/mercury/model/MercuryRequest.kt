@@ -294,13 +294,16 @@ abstract class MercuryRequest {
 
     private fun buildRequest(): Request {
 
+        var hostClass = this.javaClass.getAnnotation(Host::class.java) ?: null
+        var host: String? = hostClass?.host ?: null
+
         var fields = this@MercuryRequest.javaClass.declaredFields
 
         var get = this.javaClass.getAnnotation(Get::class.java) ?: null
         if (null != get) {
             return Request.Builder()
                     .url(StringBuilder().apply {
-                        append(Mercury.host)
+                        append(host ?: Mercury.host)
                         append(get?.url)
                         append("?")
                         for (i in fields.indices) {
@@ -352,7 +355,7 @@ abstract class MercuryRequest {
                         else -> throw IllegalArgumentException("not find content type $type.")
                     }
             return Request.Builder()
-                    .url(Mercury.host + post?.url)
+                    .url((host ?: Mercury.host) + post?.url)
                     .tag(tag)
                     .post(requestBody)
                     .apply {
@@ -364,7 +367,7 @@ abstract class MercuryRequest {
         var delete = this.javaClass.getAnnotation(Delete::class.java) ?: null
         if (null != delete) {
             return Request.Builder()
-                    .url(Mercury.host + delete?.url)
+                    .url((host ?: Mercury.host) + delete?.url)
                     .tag(tag)
                     .delete()
                     .apply {
