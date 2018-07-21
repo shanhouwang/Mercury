@@ -417,6 +417,10 @@ abstract class MercuryRequest {
     private fun <T> getCache(responseClazz: Class<T>, cacheCallback: T.() -> Unit) {
 
         this.javaClass.getAnnotation(Cache::class.java) ?: return@getCache
+        if (null == this.javaClass.getAnnotation(Get::class.java)
+                && null == this.javaClass.getAnnotation(Post::class.java)) {
+            throw IllegalArgumentException("Method must be get or post.")
+        }
         var key = generateKey() ?: return@getCache
         println(">>>>>key：$key<<<<<")
         ThreadUtils
@@ -457,9 +461,6 @@ abstract class MercuryRequest {
 
         var url = this.javaClass.getAnnotation(Get::class.java)?.url
                 ?: this.javaClass.getAnnotation(Post::class.java)?.url
-                ?: this.javaClass.getAnnotation(Patch::class.java)?.url
-                ?: this.javaClass.getAnnotation(Put::class.java)?.url
-                ?: this.javaClass.getAnnotation(Delete::class.java)?.url
                 ?: return null
         return StringBuilder().apply {
             append(Mercury.host)
