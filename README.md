@@ -46,6 +46,14 @@ class BaseRequest : MercuryRequest()
 @ContentType(type = MercuryContentType.FORM)
 class BaseRequest : MercuryRequest()
 ```
+### 3、Cache
+* Request Model实体类注解方法必须是Get或者Post
+* 第一次请求后，如果返回，会缓存下来，第二次同样的请求（url 和 请求参数一致）首先会走缓存的数据，然后会回调
+
+```
+@Cache
+class MainRequest(var id: String, var name: String) : MercuryRequest()
+```
 ### request
 ```
 BaseRequest("10086", "Devin")

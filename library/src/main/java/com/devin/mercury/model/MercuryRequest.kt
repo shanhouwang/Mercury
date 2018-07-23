@@ -462,8 +462,10 @@ abstract class MercuryRequest {
         var url = this.javaClass.getAnnotation(Get::class.java)?.url
                 ?: this.javaClass.getAnnotation(Post::class.java)?.url
                 ?: return null
+        var hostClass = this.javaClass.getAnnotation(Host::class.java) ?: null
+        var host: String? = hostClass?.host ?: null
         return StringBuilder().apply {
-            append(Mercury.host)
+            append(host ?: Mercury.host)
             append(url)
             fields.forEach {
                 append("&")
