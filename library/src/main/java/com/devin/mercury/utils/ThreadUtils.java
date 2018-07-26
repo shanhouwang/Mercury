@@ -1,8 +1,5 @@
 package com.devin.mercury.utils;
 
-import android.os.Handler;
-import android.os.Looper;
-
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -16,7 +13,6 @@ public class ThreadUtils {
     private static ExecutorService mCachedThreadPool;
     private static ScheduledExecutorService mScheduledThreadPool;
     private static ExecutorService mSingleThreadPool;
-    private static Handler mHandler = new Handler(Looper.getMainLooper());
 
     private Type type;
     private CallBack callBack;
@@ -142,16 +138,10 @@ public class ThreadUtils {
 
         @Override
         public void run() {
-            final T obj = execute();
             if (callBack == null) {
                 return;
             }
-            mHandler.post(new Runnable() {
-                @Override
-                public void run() {
-                    callBack.onResponse(obj);
-                }
-            });
+            callBack.onResponse(execute());
         }
     }
 }

@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import com.devin.mercury.config.MercuryFilter
 import com.devin.mercury.utils.ThreadUtils
 import okhttp3.OkHttpClient
 import java.util.*
@@ -14,26 +15,30 @@ class Mercury {
 
     companion object {
 
-        lateinit var context: Application
-        lateinit var mOkHttpClient: OkHttpClient
-        lateinit var contentType: String
-        lateinit var host: String
+        var context: Application? = null
+        var mOkHttpClient: OkHttpClient? = null
+        var contentType: String? = null
+        var host: String? = null
+        /** 全局过滤器 */
+        var globalFilter: MercuryFilter? = null
         var handler = Handler(Looper.getMainLooper())
         var activities = mutableSetOf<Activity>()
         private var stackOfActivities = Stack<Activity>()
 
 
-        fun init(builder: MercuryBuilder) {
+        fun init(builder: Builder) {
             Collections.synchronizedCollection(activities)
-            mOkHttpClient = builder.okHttpClient()
-            contentType = builder.defaultContentType()
-            context = builder.getContext()
-            host = builder.host()
+            mOkHttpClient = builder.okHttpClient
+            contentType = builder.contentType
+            context = builder.context
+            host = builder.host
+            globalFilter = builder.globalFilter
             registerActivityLifecycleCallbacks()
         }
 
-        private fun registerActivityLifecycleCallbacks(){
-            Mercury.context.registerActivityLifecycleCallbacks(object : Application.ActivityLifecycleCallbacks {
+        private fun registerActivityLifecycleCallbacks() {
+            Mercury.context ?: throw IllegalArgumentException("Context must be not null.")
+            Mercury.context?.registerActivityLifecycleCallbacks(object : Application.ActivityLifecycleCallbacks {
                 override fun onActivityPaused(activity: Activity?) {
                 }
                 override fun onActivityResumed(activity: Activity?) {
@@ -44,7 +49,6 @@ class Mercury {
                 }
                 override fun onActivityStopped(activity: Activity?) {
                 }
-
                 override fun onActivityCreated(activity: Activity?, savedInstanceState: Bundle?) {
                     stackOfActivities.add(activity)
                 }
@@ -67,7 +71,8 @@ class Mercury {
         }
 
         private fun cancelRequest(tag: String) {
-            Mercury.mOkHttpClient.dispatcher().runningCalls().forEach {
+            Mercury.mOkHttpClient ?: throw IllegalArgumentException("OkHttpClient must be not null.")
+            Mercury.mOkHttpClient?.dispatcher()?.runningCalls()?.forEach {
                 Log.d("cancelRequest", ">>>>>cancelRequest, runningCalls():  ${it.request().tag()}, ${it.isCanceled}")
                 if (tag == it.request().tag() && !it.isCanceled) {
                     it.cancel()
@@ -75,7 +80,7 @@ class Mercury {
                 }
             }
 
-            Mercury.mOkHttpClient.dispatcher().queuedCalls().forEach {
+            Mercury.mOkHttpClient?.dispatcher()?.queuedCalls()?.forEach {
                 Log.d("cancelRequest", ">>>>>cancelRequest, queuedCalls():  ${it.request().tag()}, ${it.isCanceled}")
                 if (tag == it.request().tag() && !it.isCanceled) {
                     it.cancel()
@@ -95,16 +100,42 @@ class Mercury {
 
     }
 
-    interface MercuryBuilder {
+    class Builder {
 
-        fun getContext(): Application
+        var context: Application? = null
+        var okHttpClient: OkHttpClient? = null
+        var contentType: String? = null
+        var host: String? = null
+        var globalFilter: MercuryFilter? = null
 
-        fun okHttpClient(): OkHttpClient
+        /** 设置全局的Context */
+        fun context(context: Application): Builder {
+            this.context = context
+            return this@Builder
+        }
 
-        fun defaultContentType(): String
+        /** 设置全局的OkHttpClient */
+        fun okHttpClient(client: OkHttpClient): Builder {
+            this.okHttpClient = client
+            return this@Builder
+        }
 
-        /** http://www.baidu.com/ */
-        fun host(): String
+        /** 设置全局的ContentType */
+        fun contentType(contentType: String): Builder {
+            this.contentType = contentType
+            return this@Builder
+        }
 
+        /** 设置全局Host */
+        fun host(host: String): Builder {
+            this.host = host
+            return this@Builder
+        }
+
+        /** 设置全局过滤器 */
+        fun filter(filter: MercuryFilter): Builder {
+            this.globalFilter = filter
+            return this@Builder
+        }
     }
 }

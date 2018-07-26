@@ -13,8 +13,8 @@ class MercuryCache {
         private const val MERCURY_CACHE = "mercury_cache"
 
         private fun getCacheDir(): File {
-            return File(Mercury.mOkHttpClient.cache()?.directory()?.path
-                    ?: (Mercury.context.externalCacheDir.path + File.separator + MERCURY_CACHE + File.separator)).apply {
+            return File(Mercury.mOkHttpClient?.cache()?.directory()?.path
+                    ?: (Mercury.context?.externalCacheDir?.path + File.separator + MERCURY_CACHE + File.separator)).apply {
                 if (!exists()) mkdirs()
             }
         }

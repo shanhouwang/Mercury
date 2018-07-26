@@ -4,6 +4,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.support.v7.app.AppCompatActivity
 import android.view.View
+import com.devin.mercury.config.MercuryFilter
 import kotlinx.android.synthetic.main.activity_main.*
 
 class MainActivity : AppCompatActivity() {
@@ -16,6 +17,11 @@ class MainActivity : AppCompatActivity() {
 
         for (i in 0 until 1) {
             MainRequest("10086", "Devin：$i")
+                    .filter(object : MercuryFilter {
+                        override fun body(body: String): String {
+                            return ""
+                        }
+                    })
                     .requestByLifecycle(BaseResponse::class.java
                             , startCallback = {
                         progressBar.visibility = View.VISIBLE

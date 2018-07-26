@@ -8,6 +8,7 @@ import com.devin.mercury.Mercury
 import com.devin.mercury.MercuryContentType
 import com.devin.mercury.annotation.*
 import com.devin.mercury.annotation.Cache
+import com.devin.mercury.config.MercuryFilter
 import com.devin.mercury.model.MercuryBuildHeaders
 import com.devin.mercury.utils.MercuryCache
 import com.devin.mercury.utils.ThreadUtils
@@ -24,6 +25,8 @@ abstract class MercuryRequest {
     private var tag: String? = null
     @JSONField(serialize = false)
     private var mercuryBuildHeaders: MercuryBuildHeaders? = null
+    @JSONField(serialize = false)
+    private var filter: MercuryFilter? = null
 
     /**
      * 请求会根据Activity的销毁而取消
@@ -31,6 +34,12 @@ abstract class MercuryRequest {
     fun lifecycle(activity: Activity): MercuryRequest {
         tag = activity?.javaClass?.name + activity?.hashCode()
         Mercury.activities.add(activity)
+        return this
+    }
+
+    /** 本次请求的过滤器 */
+    fun filter(filter: MercuryFilter): MercuryRequest {
+        this.filter = filter
         return this
     }
 
@@ -131,7 +140,7 @@ abstract class MercuryRequest {
      * @param successCallback 成功回调方法
      */
     fun <T> requestByLifecycle(responseClazz: Class<T>
-                    , successCallback: T.() -> Unit) {
+                               , successCallback: T.() -> Unit) {
         buildByLifecycle(responseClazz
                 , startCallback = {}
                 , endCallback = {}
@@ -148,8 +157,8 @@ abstract class MercuryRequest {
      * @param failedCallback 失败回调方法
      */
     fun <T> requestByLifecycle(responseClazz: Class<T>
-                    , successCallback: T.() -> Unit
-                    , failedCallback: String.() -> Unit) {
+                               , successCallback: T.() -> Unit
+                               , failedCallback: String.() -> Unit) {
         buildByLifecycle(responseClazz
                 , startCallback = {}
                 , endCallback = {}
@@ -167,9 +176,9 @@ abstract class MercuryRequest {
      * @param successCallback 成功回调方法
      */
     fun <T> requestByLifecycle(responseClazz: Class<T>
-                    , startCallback: () -> Unit
-                    , endCallback: () -> Unit
-                    , successCallback: T.() -> Unit) {
+                               , startCallback: () -> Unit
+                               , endCallback: () -> Unit
+                               , successCallback: T.() -> Unit) {
         buildByLifecycle(responseClazz
                 , startCallback = { startCallback() }
                 , endCallback = { endCallback() }
@@ -188,10 +197,10 @@ abstract class MercuryRequest {
      * @param failedCallback 失败回调方法
      */
     fun <T> requestByLifecycle(responseClazz: Class<T>
-                    , startCallback: () -> Unit
-                    , endCallback: () -> Unit
-                    , successCallback: T.() -> Unit
-                    , failedCallback: String.() -> Unit) {
+                               , startCallback: () -> Unit
+                               , endCallback: () -> Unit
+                               , successCallback: T.() -> Unit
+                               , failedCallback: String.() -> Unit) {
         buildByLifecycle(responseClazz
                 , startCallback = { startCallback() }
                 , endCallback = { endCallback() }
@@ -254,16 +263,20 @@ abstract class MercuryRequest {
                 .get(ThreadUtils.Type.CACHED)
                 .apply {
                     callBack {
-                        if (null == it) {
-                            return@callBack
-                        }
-                        Mercury.mOkHttpClient.newCall(it as Request).enqueue(object : Callback {
+                        it ?: return@callBack
+                        Mercury.mOkHttpClient?.newCall(it as Request)?.enqueue(object : Callback {
                             override fun onResponse(call: Call?, response: Response?) {
                                 Mercury.handler.post({
                                     endCallback.invoke()
                                 })
                                 var body = response?.body()?.string()
                                 println(">>>>>onResponse: $body<<<<<")
+                                /** 先走全局过滤器 */
+                                body = Mercury.globalFilter?.body(body ?: "") ?: body
+                                println(">>>>>globalFilter body: $body<<<<<")
+                                /** 再走本次请求过滤器 */
+                                body = filter?.body(body ?: "") ?: body
+                                println(">>>>>filter body: $body<<<<<")
                                 Mercury.handler.post({
                                     try {
                                         successCallback.invoke(JSON.parseObject(body, responseClazz))
@@ -427,9 +440,7 @@ abstract class MercuryRequest {
                 .get(ThreadUtils.Type.CACHED)
                 .apply {
                     callBack {
-                        if (null == it) {
-                            return@callBack
-                        }
+                        it ?: return@callBack
                         Mercury.handler.post({
                             cacheCallback.invoke(it as T)
                         })
