@@ -7,7 +7,7 @@ import com.devin.mercury.annotation.Delete
 import com.devin.mercury.annotation.Get
 import com.devin.model.mercury.MercuryRequest
 
-@Delete(url = "")
+@Get(url = "")
 @Cache
 @ContentType(type = MercuryContentType.FORM)
 class MainRequest(var id: String, var name: String) : BaseRequest()
