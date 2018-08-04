@@ -16,7 +16,7 @@ class MainActivity : AppCompatActivity() {
         println(">>>>>main thread: ${Thread.currentThread().id}<<<<<")
 
         for (i in 0 until 1) {
-            MainRequest("10086", "Devin：$i")
+            MainRequest("10086", "Devin：$i 我也是日了狗了")
                     .filter(object : MercuryFilter {
                         override fun body(body: String): String {
                             return ""

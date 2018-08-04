@@ -1,9 +1,11 @@
 package com.devin.model.mercury
 
 import android.app.Activity
+import android.text.TextUtils
 import android.util.Base64
 import com.alibaba.fastjson.JSON
 import com.alibaba.fastjson.annotation.JSONField
+import com.alibaba.fastjson.serializer.PropertyFilter
 import com.devin.mercury.Mercury
 import com.devin.mercury.MercuryContentType
 import com.devin.mercury.annotation.*
@@ -15,6 +17,8 @@ import com.devin.mercury.utils.ThreadUtils
 import okhttp3.*
 import java.io.File
 import java.io.IOException
+import java.lang.reflect.Field
+import java.net.URLEncoder
 
 /**
  * @author devin
@@ -27,6 +31,9 @@ abstract class MercuryRequest {
     private var mercuryBuildHeaders: MercuryBuildHeaders? = null
     @JSONField(serialize = false)
     private var filter: MercuryFilter? = null
+    /** don't have host */
+    @JSONField(serialize = false)
+    private var url: String = ""
 
     /**
      * 请求会根据Activity的销毁而取消
@@ -256,6 +263,8 @@ abstract class MercuryRequest {
                           , failedCallback: String.() -> Unit) {
         startCallback.invoke()
 
+        url = dealUrl()
+
         /** 判断是否使用缓存 */
         getCache(responseClazz, cacheCallback = { cacheCallback() })
 
@@ -316,16 +325,29 @@ abstract class MercuryRequest {
         if (null != get) {
             return Request.Builder()
                     .url(StringBuilder().apply {
+
+                        var isAppend = true
+
                         append(host ?: Mercury.host)
-                        append(get?.url)
-                        append("?")
+                        append(url)
                         for (i in fields.indices) {
-                            var h = fields[i].getAnnotation(Header::class.java)
+                            var field = fields[i]
+                            var h = field.getAnnotation(Header::class.java)
                             if (null != h) {
                                 continue
                             }
-                            fields[i].isAccessible = true
-                            append("${fields[i].name}=${fields[i].get(this@MercuryRequest)}")
+                            var path = field.getAnnotation(Path::class.java)
+                            if (null != path) {
+                                continue
+                            }
+
+                            if (isAppend) {
+                                append("?")
+                                isAppend = false
+                            }
+
+                            field.isAccessible = true
+                            append("${field.name}=${field.get(this@MercuryRequest)}")
                             if (i != fields.size - 1) {
                                 append("&")
                             }
@@ -345,7 +367,9 @@ abstract class MercuryRequest {
                     ?: Mercury.contentType
             var requestBody: RequestBody =
                     when (type) {
-                        MercuryContentType.JSON -> RequestBody.create(MediaType.parse(type), JSON.toJSONString(this))
+                        MercuryContentType.JSON -> RequestBody.create(MediaType.parse(type), JSON.toJSONString(this@MercuryRequest, PropertyFilter { obj, name, value ->
+                            propertyFilter(obj, name, value)
+                        }))
                         MercuryContentType.FORM -> FormBody.Builder().apply {
                             fields?.forEach {
                                 it.isAccessible = true
@@ -368,7 +392,7 @@ abstract class MercuryRequest {
                         else -> throw IllegalArgumentException("not find content type $type.")
                     }
             return Request.Builder()
-                    .url((host ?: Mercury.host) + post?.url)
+                    .url((host ?: Mercury.host) + url)
                     .tag(tag)
                     .post(requestBody)
                     .apply {
@@ -380,7 +404,7 @@ abstract class MercuryRequest {
         var delete = this.javaClass.getAnnotation(Delete::class.java) ?: null
         if (null != delete) {
             return Request.Builder()
-                    .url((host ?: Mercury.host) + delete?.url)
+                    .url((host ?: Mercury.host) + url)
                     .tag(tag)
                     .delete()
                     .apply {
@@ -390,6 +414,25 @@ abstract class MercuryRequest {
         }
 
         return throw IllegalArgumentException("request must not null.")
+    }
+
+    private fun propertyFilter(o: Any, name: String, value: Any): Boolean {
+
+        var fields = o::class.java.declaredFields
+
+        for (i in fields.indices) {
+            var field = fields[i]
+            var h = field.getAnnotation(Header::class.java)
+            if (null != h) {
+                return false
+            }
+            var path = field.getAnnotation(Path::class.java)
+            if (null != path) {
+                return false
+            }
+        }
+
+        return true
     }
 
     private fun buildHeaders(request: MercuryRequest, builder: Request.Builder) {
@@ -475,14 +518,43 @@ abstract class MercuryRequest {
                 ?: return null
         var hostClass = this.javaClass.getAnnotation(Host::class.java) ?: null
         var host: String? = hostClass?.host ?: null
-        return StringBuilder().apply {
+        var key = StringBuilder().apply {
             append(host ?: Mercury.host)
-            append(url)
+            append(mapUrl(fields, url))
             fields.forEach {
                 append("&")
                 it.isAccessible = true
                 append("${it.name}=${it.get(this@MercuryRequest)}")
             }
         }.toString()
+
+        return Base64.encodeToString(key.toByteArray(), Base64.NO_WRAP)
     }
+
+    private fun dealUrl(): String {
+
+        var fields = this@MercuryRequest.javaClass.declaredFields
+
+        var url = this.javaClass.getAnnotation(Get::class.java)?.url
+                ?: this.javaClass.getAnnotation(Post::class.java)?.url
+                ?: this.javaClass.getAnnotation(Patch::class.java)?.url
+                ?: this.javaClass.getAnnotation(Put::class.java)?.url
+                ?: ""
+
+        return mapUrl(fields, url)
+    }
+
+    private fun mapUrl(fields: Array<out Field>, url: String): String {
+        var temp = url
+        for (i in fields.indices) {
+            var path = fields[i].getAnnotation(Path::class.java)
+            path ?: continue
+            var field = fields[i]
+            field.isAccessible = true
+            var value = if (TextUtils.isEmpty(path.value)) field.name else path.value
+            temp = temp.replace("{$value}", field.get(this@MercuryRequest).toString(), true)
+        }
+        return temp
+    }
+
 }

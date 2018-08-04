@@ -15,7 +15,6 @@ open class BaseRequest : MercuryRequest(), MercuryBuildHeaders {
     }
 
     @Header
-    @JSONField(serialize = false)
     var headers = mutableMapOf<String, String>().apply {
         put("x-request-session", JSON.toJSONString(this@BaseRequest))
     }
