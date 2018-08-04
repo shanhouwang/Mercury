@@ -367,9 +367,9 @@ abstract class MercuryRequest {
                     ?: Mercury.contentType
             var requestBody: RequestBody =
                     when (type) {
-                        MercuryContentType.JSON -> RequestBody.create(MediaType.parse(type), JSON.toJSONString(this@MercuryRequest, PropertyFilter { obj, name, value ->
-                            propertyFilter(obj, name, value)
-                        }))
+                        MercuryContentType.JSON -> RequestBody.create(MediaType.parse(type), JSON.toJSONString(this@MercuryRequest
+                                , arrayOf(PropertyFilter { obj, name, value -> propertyFilter(obj, name, value) }
+                                , PropertyFilter { obj, name, value -> propertyFilter(obj, name, value) })))
                         MercuryContentType.FORM -> FormBody.Builder().apply {
                             fields?.forEach {
                                 it.isAccessible = true
@@ -417,21 +417,18 @@ abstract class MercuryRequest {
     }
 
     private fun propertyFilter(o: Any, name: String, value: Any): Boolean {
-
         var fields = o::class.java.declaredFields
-
         for (i in fields.indices) {
             var field = fields[i]
             var h = field.getAnnotation(Header::class.java)
-            if (null != h) {
+            if (null != h && field.name == name) {
                 return false
             }
             var path = field.getAnnotation(Path::class.java)
-            if (null != path) {
+            if (null != path && field.name == name) {
                 return false
             }
         }
-
         return true
     }
 
