@@ -15,6 +15,8 @@ class Mercury {
 
     companion object {
 
+        /** 初始化开关 */
+        var init: Boolean = false
         var context: Application? = null
         var mOkHttpClient: OkHttpClient? = null
         var contentType: String? = null
@@ -27,6 +29,9 @@ class Mercury {
 
 
         fun init(builder: Builder) {
+            if (init) {
+                return@init
+            }
             Collections.synchronizedCollection(activities)
             mOkHttpClient = builder.okHttpClient
             contentType = builder.contentType
@@ -34,6 +39,7 @@ class Mercury {
             host = builder.host
             globalFilter = builder.globalFilter
             registerActivityLifecycleCallbacks()
+            init = true
         }
 
         private fun registerActivityLifecycleCallbacks() {
@@ -41,14 +47,19 @@ class Mercury {
             Mercury.context?.registerActivityLifecycleCallbacks(object : Application.ActivityLifecycleCallbacks {
                 override fun onActivityPaused(activity: Activity?) {
                 }
+
                 override fun onActivityResumed(activity: Activity?) {
                 }
+
                 override fun onActivityStarted(activity: Activity?) {
                 }
+
                 override fun onActivitySaveInstanceState(activity: Activity?, outState: Bundle?) {
                 }
+
                 override fun onActivityStopped(activity: Activity?) {
                 }
+
                 override fun onActivityCreated(activity: Activity?, savedInstanceState: Bundle?) {
                     stackOfActivities.add(activity)
                 }
@@ -71,7 +82,8 @@ class Mercury {
         }
 
         private fun cancelRequest(tag: String) {
-            Mercury.mOkHttpClient ?: throw IllegalArgumentException("OkHttpClient must be not null.")
+            Mercury.mOkHttpClient
+                    ?: throw IllegalArgumentException("OkHttpClient must be not null.")
             Mercury.mOkHttpClient?.dispatcher()?.runningCalls()?.forEach {
                 Log.d("cancelRequest", ">>>>>cancelRequest, runningCalls():  ${it.request().tag()}, ${it.isCanceled}")
                 if (tag == it.request().tag() && !it.isCanceled) {
