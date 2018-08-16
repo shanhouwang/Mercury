@@ -29,6 +29,9 @@ import okio.BufferedSource;
 import okio.GzipSource;
 import okio.Okio;
 
+/**
+ * @author Devin
+ */
 public final class HttpLoggingInterceptor implements Interceptor {
     private static final Charset UTF8 = Charset.forName("UTF-8");
     private long maxContentLength;
