@@ -12,19 +12,12 @@ class App : Application() {
     override fun onCreate() {
         super.onCreate()
 
-        Mercury.init(Mercury.Builder().apply {
-
-            context = this@App
-
-            host = "http://www.baidu.com/"
-
-            okHttpClient = OkHttpClient.Builder()
-                    .addInterceptor(HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BODY))
-                    .addInterceptor(ChuckInterceptor(this@App).showNotification(true))
-                    .build()
-
-            contentType = MercuryContentType.JSON
-
-        })
+        Mercury.init(Mercury.Builder()
+                .context(this@App)
+                .okHttpClient(OkHttpClient.Builder()
+                        .addInterceptor(HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BODY))
+                        .addInterceptor(ChuckInterceptor(this@App).showNotification(true))
+                        .build())
+                .contentType(MercuryContentType.JSON))
     }
 }

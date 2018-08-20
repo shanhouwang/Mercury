@@ -15,8 +15,6 @@ class Mercury {
 
     companion object {
 
-        /** 初始化开关 */
-        var init: Boolean = false
         var context: Application? = null
         var mOkHttpClient: OkHttpClient? = null
         var contentType: String? = null
@@ -29,17 +27,13 @@ class Mercury {
 
 
         fun init(builder: Builder) {
-            if (init) {
-                return@init
-            }
             Collections.synchronizedCollection(activities)
-            mOkHttpClient = builder.okHttpClient
-            contentType = builder.contentType
-            context = builder.context
-            host = builder.host
-            globalFilter = builder.globalFilter
+            mOkHttpClient = builder.getOkClient()
+            contentType = builder.getContentType()
+            context = builder.getContext()
+            host = builder.getHost()
+            globalFilter = builder.getGlobalFilter()
             registerActivityLifecycleCallbacks()
-            init = true
         }
 
         private fun registerActivityLifecycleCallbacks() {
@@ -47,23 +41,17 @@ class Mercury {
             Mercury.context?.registerActivityLifecycleCallbacks(object : Application.ActivityLifecycleCallbacks {
                 override fun onActivityPaused(activity: Activity?) {
                 }
-
                 override fun onActivityResumed(activity: Activity?) {
                 }
-
                 override fun onActivityStarted(activity: Activity?) {
                 }
-
                 override fun onActivitySaveInstanceState(activity: Activity?, outState: Bundle?) {
                 }
-
                 override fun onActivityStopped(activity: Activity?) {
                 }
-
                 override fun onActivityCreated(activity: Activity?, savedInstanceState: Bundle?) {
                     stackOfActivities.add(activity)
                 }
-
                 override fun onActivityDestroyed(activity: Activity?) {
                     stackOfActivities.remove(activity)
                     if (activities.contains(activity)) {
@@ -114,11 +102,31 @@ class Mercury {
 
     class Builder {
 
-        var context: Application? = null
-        var okHttpClient: OkHttpClient? = null
-        var contentType: String? = null
-        var host: String? = null
-        var globalFilter: MercuryFilter? = null
+        private var context: Application? = null
+        private var okHttpClient: OkHttpClient? = null
+        private var contentType: String? = null
+        private var host: String? = null
+        private var globalFilter: MercuryFilter? = null
+
+        fun getContext(): Application? {
+            return context
+        }
+
+        fun getOkClient(): OkHttpClient? {
+            return okHttpClient
+        }
+
+        fun getContentType(): String? {
+            return contentType
+        }
+
+        fun getHost(): String? {
+            return host
+        }
+
+        fun getGlobalFilter(): MercuryFilter? {
+            return globalFilter
+        }
 
         /** 设置全局的Context */
         fun context(context: Application): Builder {
