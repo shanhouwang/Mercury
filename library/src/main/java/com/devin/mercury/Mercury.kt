@@ -67,15 +67,15 @@ class Mercury {
                 override fun onActivityDestroyed(activity: Activity?) {
                     stackOfActivities.remove(activity)
                     if (activities.contains(activity)) {
-                        ThreadUtils.get(ThreadUtils.Type.CACHED).start({
+                        ThreadUtils.get(ThreadUtils.Type.CACHED).start {
                             cancelRequest(activity?.javaClass?.name + activity?.hashCode())
-                        })
+                        }
                         activities.remove(activity)
                     } else {
                         /** 如果用户调用了 requestByLifecycle 方法 */
-                        ThreadUtils.get(ThreadUtils.Type.CACHED).start({
+                        ThreadUtils.get(ThreadUtils.Type.CACHED).start {
                             cancelRequest(activity?.javaClass?.name + activity?.hashCode() + "requestByLifecycle")
-                        })
+                        }
                     }
                 }
             })
