@@ -6,4 +6,4 @@ import com.devin.model.mercury.MercuryRequest
 
 @Get(url = "")
 @Cache
-class NullRequest() : MercuryRequest()
+class NullRequest : MercuryRequest()

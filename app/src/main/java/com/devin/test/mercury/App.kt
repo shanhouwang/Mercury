@@ -14,6 +14,7 @@ class App : Application() {
 
         Mercury.init(Mercury.Builder()
                 .context(this@App)
+                .host("http://www.baidu.com/")
                 .okHttpClient(OkHttpClient.Builder()
                         .addInterceptor(HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BODY))
                         .addInterceptor(ChuckInterceptor(this@App).showNotification(true))

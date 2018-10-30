@@ -1,6 +1,7 @@
 package com.devin.model.mercury
 
 import android.app.Activity
+import android.net.Uri
 import android.text.TextUtils
 import android.util.Base64
 import com.alibaba.fastjson.JSON
@@ -11,7 +12,7 @@ import com.devin.mercury.MercuryContentType
 import com.devin.mercury.annotation.*
 import com.devin.mercury.annotation.Cache
 import com.devin.mercury.config.MercuryFilter
-import com.devin.mercury.model.MercuryBuildHeaders
+import com.devin.mercury.model.*
 import com.devin.mercury.utils.MercuryCache
 import com.devin.mercury.utils.ThreadUtils
 import okhttp3.*
@@ -67,6 +68,15 @@ abstract class MercuryRequest {
     /**
      * @param responseClazz 回调类型
      * @param successCallback 成功回调方法
+     */
+    fun <T> request(responseClazz: Class<T>
+                    , successCallback: MercurySuccessCallback<T>) {
+        build(responseClazz, null, null, successCallback, null, null)
+    }
+
+    /**
+     * @param responseClazz 回调类型
+     * @param successCallback 成功回调方法
      * @param failedCallback 失败回调方法
      */
     fun <T> request(responseClazz: Class<T>
@@ -78,6 +88,17 @@ abstract class MercuryRequest {
                 , successCallback = { successCallback() }
                 , cacheCallback = {}
                 , failedCallback = { failedCallback() })
+    }
+
+    /**
+     * @param responseClazz 回调类型
+     * @param successCallback 成功回调方法
+     * @param failedCallback 失败回调方法
+     */
+    fun <T> request(responseClazz: Class<T>
+                    , successCallback: MercurySuccessCallback<T>
+                    , failedCallback: MercuryFailedCallback) {
+        build(responseClazz, null, null, successCallback, null, failedCallback)
     }
 
     /**
@@ -103,6 +124,19 @@ abstract class MercuryRequest {
      * @param startCallback 调用网络接口之前的回调
      * @param endCallback 调用网络接口之后的回调
      * @param successCallback 成功回调方法
+     */
+    fun <T> request(responseClazz: Class<T>
+                    , startCallback: MercuryStartCallback
+                    , endCallback: MercuryEndCallback
+                    , successCallback: MercurySuccessCallback<T>) {
+        build(responseClazz, startCallback, endCallback, successCallback, null, null)
+    }
+
+    /**
+     * @param responseClazz 回调类型
+     * @param startCallback 调用网络接口之前的回调
+     * @param endCallback 调用网络接口之后的回调
+     * @param successCallback 成功回调方法
      * @param failedCallback 失败回调方法
      */
     fun <T> request(responseClazz: Class<T>
@@ -116,6 +150,21 @@ abstract class MercuryRequest {
                 , successCallback = { successCallback() }
                 , cacheCallback = {}
                 , failedCallback = { failedCallback() })
+    }
+
+    /**
+     * @param responseClazz 回调类型
+     * @param startCallback 调用网络接口之前的回调
+     * @param endCallback 调用网络接口之后的回调
+     * @param successCallback 成功回调方法
+     * @param failedCallback 失败回调方法
+     */
+    fun <T> request(responseClazz: Class<T>
+                    , startCallback: MercuryStartCallback
+                    , endCallback: MercuryEndCallback
+                    , successCallback: MercurySuccessCallback<T>
+                    , failedCallback: MercuryFailedCallback) {
+        build(responseClazz, startCallback, endCallback, successCallback, null, failedCallback)
     }
 
     /**
@@ -141,6 +190,23 @@ abstract class MercuryRequest {
     }
 
     /**
+     * @param responseClazz 回调类型
+     * @param startCallback 调用网络接口之前的回调
+     * @param endCallback 调用网络接口之后的回调
+     * @param successCallback 成功回调方法
+     * @param cacheCallback 本地缓存回调
+     * @param failedCallback 失败回调方法
+     */
+    fun <T> request(responseClazz: Class<T>
+                    , startCallback: MercuryStartCallback
+                    , endCallback: MercuryEndCallback
+                    , successCallback: MercurySuccessCallback<T>
+                    , cacheCallback: MercuryCacheCallback<T>
+                    , failedCallback: MercuryFailedCallback) {
+        build(responseClazz, startCallback, endCallback, successCallback, cacheCallback, failedCallback)
+    }
+
+    /**
      * 请求会根据Activity的销毁而销毁
      *
      * @param responseClazz 回调类型
@@ -161,6 +227,17 @@ abstract class MercuryRequest {
      *
      * @param responseClazz 回调类型
      * @param successCallback 成功回调方法
+     */
+    fun <T> requestByLifecycle(responseClazz: Class<T>
+                               , successCallback: MercurySuccessCallback<T>) {
+        buildByLifecycle(responseClazz, null, null, successCallback, null, null)
+    }
+
+    /**
+     * 请求会根据Activity的销毁而销毁
+     *
+     * @param responseClazz 回调类型
+     * @param successCallback 成功回调方法
      * @param failedCallback 失败回调方法
      */
     fun <T> requestByLifecycle(responseClazz: Class<T>
@@ -172,6 +249,19 @@ abstract class MercuryRequest {
                 , successCallback = { successCallback() }
                 , cacheCallback = {}
                 , failedCallback = { failedCallback() })
+    }
+
+    /**
+     * 请求会根据Activity的销毁而销毁
+     *
+     * @param responseClazz 回调类型
+     * @param successCallback 成功回调方法
+     * @param failedCallback 失败回调方法
+     */
+    fun <T> requestByLifecycle(responseClazz: Class<T>
+                               , successCallback: MercurySuccessCallback<T>
+                               , failedCallback: MercuryFailedCallback) {
+        buildByLifecycle(responseClazz, null, null, successCallback, null, failedCallback)
     }
 
     /**
@@ -201,6 +291,21 @@ abstract class MercuryRequest {
      * @param startCallback 调用网络接口之前的回调
      * @param endCallback 调用网络接口之后的回调
      * @param successCallback 成功回调方法
+     */
+    fun <T> requestByLifecycle(responseClazz: Class<T>
+                               , startCallback: MercuryStartCallback
+                               , endCallback: MercuryEndCallback
+                               , successCallback: MercurySuccessCallback<T>) {
+        buildByLifecycle(responseClazz, startCallback, endCallback, successCallback, null, null)
+    }
+
+    /**
+     * 请求会根据Activity的销毁而销毁
+     *
+     * @param responseClazz 回调类型
+     * @param startCallback 调用网络接口之前的回调
+     * @param endCallback 调用网络接口之后的回调
+     * @param successCallback 成功回调方法
      * @param failedCallback 失败回调方法
      */
     fun <T> requestByLifecycle(responseClazz: Class<T>
@@ -214,6 +319,23 @@ abstract class MercuryRequest {
                 , successCallback = { successCallback() }
                 , cacheCallback = {}
                 , failedCallback = { failedCallback() })
+    }
+
+    /**
+     * 请求会根据Activity的销毁而销毁
+     *
+     * @param responseClazz 回调类型
+     * @param startCallback 调用网络接口之前的回调
+     * @param endCallback 调用网络接口之后的回调
+     * @param successCallback 成功回调方法
+     * @param failedCallback 失败回调方法
+     */
+    fun <T> requestByLifecycle(responseClazz: Class<T>
+                               , startCallback: MercuryStartCallback
+                               , endCallback: MercuryEndCallback
+                               , successCallback: MercurySuccessCallback<T>
+                               , failedCallback: MercuryFailedCallback) {
+        buildByLifecycle(responseClazz, startCallback, endCallback, successCallback, null, failedCallback)
     }
 
     /**
@@ -240,6 +362,25 @@ abstract class MercuryRequest {
                 , failedCallback = { failedCallback() })
     }
 
+    /**
+     * 请求会根据Activity的销毁而销毁
+     *
+     * @param responseClazz 回调类型
+     * @param startCallback 调用网络接口之前的回调
+     * @param endCallback 调用网络接口之后的回调
+     * @param successCallback 成功回调方法
+     * @param cacheCallback 本地缓存回调
+     * @param failedCallback 失败回调方法
+     */
+    fun <T> requestByLifecycle(responseClazz: Class<T>
+                               , startCallback: MercuryStartCallback
+                               , endCallback: MercuryEndCallback
+                               , successCallback: MercurySuccessCallback<T>
+                               , cacheCallback: MercuryCacheCallback<T>
+                               , failedCallback: MercuryFailedCallback) {
+        buildByLifecycle(responseClazz, startCallback, endCallback, successCallback, cacheCallback, failedCallback)
+    }
+
     private fun <T> buildByLifecycle(responseClazz: Class<T>
                                      , startCallback: () -> Unit
                                      , endCallback: () -> Unit
@@ -253,6 +394,16 @@ abstract class MercuryRequest {
                 , successCallback = { successCallback() }
                 , cacheCallback = { cacheCallback() }
                 , failedCallback = { failedCallback() })
+    }
+
+    private fun <T> buildByLifecycle(responseClazz: Class<T>
+                                     , startCallback: MercuryStartCallback?
+                                     , endCallback: MercuryEndCallback?
+                                     , successCallback: MercurySuccessCallback<T>
+                                     , cacheCallback: MercuryCacheCallback<T>?
+                                     , failedCallback: MercuryFailedCallback?) {
+        tag = tag ?: Mercury.getCurActivity()?.javaClass?.name + Mercury.getCurActivity()?.hashCode() + "requestByLifecycle"
+        build(responseClazz, startCallback, endCallback, successCallback, cacheCallback, failedCallback)
     }
 
     private fun <T> build(responseClazz: Class<T>
@@ -275,9 +426,9 @@ abstract class MercuryRequest {
                         it ?: return@callBack
                         Mercury.mOkHttpClient?.newCall(it as Request)?.enqueue(object : Callback {
                             override fun onResponse(call: Call?, response: Response?) {
-                                Mercury.handler.post({
+                                Mercury.handler.post {
                                     endCallback.invoke()
-                                })
+                                }
                                 var body = response?.body()?.string()
                                 println(">>>>>onResponse: $body<<<<<")
                                 /** 先走全局过滤器 */
@@ -286,23 +437,82 @@ abstract class MercuryRequest {
                                 /** 再走本次请求过滤器 */
                                 body = filter?.body(body ?: "") ?: body
                                 println(">>>>>filter body: $body<<<<<")
-                                Mercury.handler.post({
+                                Mercury.handler.post {
                                     try {
                                         successCallback.invoke(JSON.parseObject(body, responseClazz))
                                         /** 说明此时业务数据是正常的 判断是否存储 */
                                         store(body)
                                     } catch (e: Exception) {
-                                        Mercury.handler.post({
+                                        Mercury.handler.post {
                                             failedCallback.invoke(e.message ?: "exception")
-                                        })
+                                        }
                                     }
-                                })
+                                }
                             }
 
                             override fun onFailure(call: Call?, e: IOException?) {
-                                Mercury.handler.post({
+                                Mercury.handler.post {
                                     failedCallback.invoke(e?.message ?: "exception")
-                                })
+                                }
+                            }
+                        })
+                    }
+                    start(object : ThreadUtils.MercuryRunnable<Request>() {
+                        override fun execute(): Request {
+                            return buildRequest()
+                        }
+                    })
+                }
+    }
+
+    private fun <T> build(responseClazz: Class<T>
+                          , startCallback: MercuryStartCallback?
+                          , endCallback: MercuryEndCallback?
+                          , successCallback: MercurySuccessCallback<T>
+                          , cacheCallback: MercuryCacheCallback<T>?
+                          , failedCallback: MercuryFailedCallback?) {
+        startCallback?.callback()
+
+        url = dealUrl()
+
+        /** 判断是否使用缓存 */
+        getCache(responseClazz, cacheCallback)
+
+        ThreadUtils
+                .get(ThreadUtils.Type.CACHED)
+                .apply {
+                    callBack {
+                        it ?: return@callBack
+                        Mercury.mOkHttpClient?.newCall(it as Request)?.enqueue(object : Callback {
+                            override fun onResponse(call: Call?, response: Response?) {
+                                Mercury.handler.post {
+                                    endCallback?.callback()
+                                }
+                                var body = response?.body()?.string()
+                                println(">>>>>onResponse: $body<<<<<")
+                                /** 先走全局过滤器 */
+                                body = Mercury.globalFilter?.body(body ?: "") ?: body
+                                println(">>>>>globalFilter body: $body<<<<<")
+                                /** 再走本次请求过滤器 */
+                                body = filter?.body(body ?: "") ?: body
+                                println(">>>>>filter body: $body<<<<<")
+                                Mercury.handler.post {
+                                    try {
+                                        successCallback?.callback(JSON.parseObject(body, responseClazz))
+                                        /** 说明此时业务数据是正常的 判断是否存储 */
+                                        store(body)
+                                    } catch (e: Exception) {
+                                        Mercury.handler.post {
+                                            failedCallback?.callback(e.message ?: "exception")
+                                        }
+                                    }
+                                }
+                            }
+
+                            override fun onFailure(call: Call?, e: IOException?) {
+                                Mercury.handler.post {
+                                    failedCallback?.callback(e?.message ?: "exception")
+                                }
                             }
                         })
                     }
@@ -318,16 +528,13 @@ abstract class MercuryRequest {
 
         var hostClass = this.javaClass.getAnnotation(Host::class.java) ?: null
         var host: String? = hostClass?.host ?: null
-
         var fields = this@MercuryRequest.javaClass.declaredFields
-
         var get = this.javaClass.getAnnotation(Get::class.java) ?: null
+
         if (null != get) {
             return Request.Builder()
                     .url(StringBuilder().apply {
-
                         var isAppend = true
-
                         append(host ?: Mercury.host)
                         append(url)
                         for (i in fields.indices) {
@@ -340,14 +547,20 @@ abstract class MercuryRequest {
                             if (null != path) {
                                 continue
                             }
-
                             if (isAppend) {
                                 append("?")
                                 isAppend = false
                             }
-
                             field.isAccessible = true
-                            append("${field.name}=${field.get(this@MercuryRequest)}")
+                            append(field.name)
+                            append("=")
+                            var encode = field.getAnnotation(Encode::class.java)
+                            var params = if (encode.value) {
+                                Uri.encode(field.get(this@MercuryRequest) as String)
+                            } else {
+                                field.get(this@MercuryRequest) as String
+                            }
+                            append(params)
                             if (i != fields.size - 1) {
                                 append("&")
                             }
@@ -481,9 +694,35 @@ abstract class MercuryRequest {
                 .apply {
                     callBack {
                         it ?: return@callBack
-                        Mercury.handler.post({
+                        Mercury.handler.post {
                             cacheCallback.invoke(it as T)
-                        })
+                        }
+                    }
+                    start(object : ThreadUtils.MercuryRunnable<T>() {
+                        override fun execute(): T? {
+                            return MercuryCache.get(key, responseClazz)
+                        }
+                    })
+                }
+    }
+
+    private fun <T> getCache(responseClazz: Class<T>, cacheCallback: MercuryCacheCallback<T>?) {
+
+        this.javaClass.getAnnotation(Cache::class.java) ?: return@getCache
+        if (null == this.javaClass.getAnnotation(Get::class.java)
+                && null == this.javaClass.getAnnotation(Post::class.java)) {
+            throw IllegalArgumentException("Method must be get or post.")
+        }
+        var key = generateKey() ?: return@getCache
+        println(">>>>>key：$key<<<<<")
+        ThreadUtils
+                .get(ThreadUtils.Type.CACHED)
+                .apply {
+                    callBack {
+                        it ?: return@callBack
+                        Mercury.handler.post {
+                            cacheCallback?.callback(it as T)
+                        }
                     }
                     start(object : ThreadUtils.MercuryRunnable<T>() {
                         override fun execute(): T? {
