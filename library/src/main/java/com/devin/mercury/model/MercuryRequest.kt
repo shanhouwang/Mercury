@@ -40,7 +40,7 @@ abstract class MercuryRequest {
      * 请求会根据Activity的销毁而取消
      */
     fun lifecycle(activity: Activity): MercuryRequest {
-        tag = activity?.javaClass?.name + activity?.hashCode()
+        tag = activity.javaClass.name + activity.hashCode()
         Mercury.activities.add(activity)
         return this
     }
@@ -498,7 +498,7 @@ abstract class MercuryRequest {
                                 println(">>>>>filter body: $body<<<<<")
                                 Mercury.handler.post {
                                     try {
-                                        successCallback?.callback(JSON.parseObject(body, responseClazz))
+                                        successCallback.callback(JSON.parseObject(body, responseClazz))
                                         /** 说明此时业务数据是正常的 判断是否存储 */
                                         store(body)
                                     } catch (e: Exception) {
@@ -526,10 +526,10 @@ abstract class MercuryRequest {
 
     private fun buildRequest(): Request {
 
-        var hostClass = this.javaClass.getAnnotation(Host::class.java) ?: null
-        var host: String? = hostClass?.host ?: null
-        var fields = this@MercuryRequest.javaClass.declaredFields
-        var get = this.javaClass.getAnnotation(Get::class.java) ?: null
+        val hostClass = this.javaClass.getAnnotation(Host::class.java) ?: null
+        val host: String? = hostClass?.host
+        val fields = this@MercuryRequest.javaClass.declaredFields
+        val get = this.javaClass.getAnnotation(Get::class.java) ?: null
 
         if (null != get) {
             return Request.Builder()
@@ -538,12 +538,12 @@ abstract class MercuryRequest {
                         append(host ?: Mercury.host)
                         append(url)
                         for (i in fields.indices) {
-                            var field = fields[i]
-                            var h = field.getAnnotation(Header::class.java)
+                            val field = fields[i]
+                            val h = field.getAnnotation(Header::class.java)
                             if (null != h) {
                                 continue
                             }
-                            var path = field.getAnnotation(Path::class.java)
+                            val path = field.getAnnotation(Path::class.java)
                             if (null != path) {
                                 continue
                             }
@@ -554,8 +554,8 @@ abstract class MercuryRequest {
                             field.isAccessible = true
                             append(field.name)
                             append("=")
-                            var encode = field.getAnnotation(Encode::class.java)
-                            var params = if (encode.value) {
+                            val encode = field.getAnnotation(Encode::class.java)
+                            val params = if (encode.value) {
                                 Uri.encode(field.get(this@MercuryRequest) as String)
                             } else {
                                 field.get(this@MercuryRequest) as String
@@ -574,11 +574,11 @@ abstract class MercuryRequest {
                     .build()
         }
 
-        var post = this.javaClass.getAnnotation(Post::class.java) ?: null
+        val post = this.javaClass.getAnnotation(Post::class.java) ?: null
         if (null != post) {
-            var type = this.javaClass.getAnnotation(ContentType::class.java)?.type
+            val type = this.javaClass.getAnnotation(ContentType::class.java)?.type
                     ?: Mercury.contentType
-            var requestBody: RequestBody =
+            val requestBody: RequestBody =
                     when (type) {
                         MercuryContentType.JSON -> RequestBody.create(MediaType.parse(type), JSON.toJSONString(this@MercuryRequest
                                 , arrayOf(PropertyFilter { obj, name, value -> propertyFilter(obj, name, value) }
@@ -614,7 +614,7 @@ abstract class MercuryRequest {
                     .build()
         }
 
-        var delete = this.javaClass.getAnnotation(Delete::class.java) ?: null
+        val delete = this.javaClass.getAnnotation(Delete::class.java) ?: null
         if (null != delete) {
             return Request.Builder()
                     .url((host ?: Mercury.host) + url)
@@ -630,14 +630,14 @@ abstract class MercuryRequest {
     }
 
     private fun propertyFilter(o: Any, name: String, value: Any): Boolean {
-        var fields = o::class.java.declaredFields
+        val fields = o::class.java.declaredFields
         for (i in fields.indices) {
-            var field = fields[i]
-            var h = field.getAnnotation(Header::class.java)
+            val field = fields[i]
+            val h = field.getAnnotation(Header::class.java)
             if (null != h && field.name == name) {
                 return false
             }
-            var path = field.getAnnotation(Path::class.java)
+            val path = field.getAnnotation(Path::class.java)
             if (null != path && field.name == name) {
                 return false
             }
@@ -657,14 +657,14 @@ abstract class MercuryRequest {
         if (clazz == MercuryRequest::class.java) {
             return@getHeadersByAnnotation
         }
-        var fields = clazz.declaredFields
+        val fields = clazz.declaredFields
         for (i in fields.indices) {
-            var it = fields[i]
+            val it = fields[i]
             it.isAccessible = true
-            var h = it.getAnnotation(Header::class.java)
+            val h = it.getAnnotation(Header::class.java)
             if (null != h) {
                 try {
-                    var headers = it.get(this@MercuryRequest) as MutableMap<String, String>
+                    val headers = it.get(this@MercuryRequest) as MutableMap<String, String>
                     request.headers(Headers.Builder().apply {
                         headers.mapValues { (k, v) -> add(k, Base64.encodeToString(v.toByteArray(), Base64.NO_WRAP)) }
                     }.build())
@@ -687,7 +687,7 @@ abstract class MercuryRequest {
                 && null == this.javaClass.getAnnotation(Post::class.java)) {
             throw IllegalArgumentException("Method must be get or post.")
         }
-        var key = generateKey() ?: return@getCache
+        val key = generateKey() ?: return@getCache
         println(">>>>>key：$key<<<<<")
         ThreadUtils
                 .get(ThreadUtils.Type.CACHED)
@@ -713,7 +713,7 @@ abstract class MercuryRequest {
                 && null == this.javaClass.getAnnotation(Post::class.java)) {
             throw IllegalArgumentException("Method must be get or post.")
         }
-        var key = generateKey() ?: return@getCache
+        val key = generateKey() ?: return@getCache
         println(">>>>>key：$key<<<<<")
         ThreadUtils
                 .get(ThreadUtils.Type.CACHED)
@@ -736,7 +736,7 @@ abstract class MercuryRequest {
 
         body ?: return@store
         this.javaClass.getAnnotation(Cache::class.java) ?: return@store
-        var key = generateKey() ?: return@store
+        val key = generateKey() ?: return@store
         println(">>>>>key：$key<<<<<")
         ThreadUtils
                 .get(ThreadUtils.Type.CACHED)
@@ -747,14 +747,14 @@ abstract class MercuryRequest {
 
     private fun generateKey(): String? {
 
-        var fields = this@MercuryRequest.javaClass.declaredFields
+        val fields = this@MercuryRequest.javaClass.declaredFields
 
-        var url = this.javaClass.getAnnotation(Get::class.java)?.url
+        val url = this.javaClass.getAnnotation(Get::class.java)?.url
                 ?: this.javaClass.getAnnotation(Post::class.java)?.url
                 ?: return null
-        var hostClass = this.javaClass.getAnnotation(Host::class.java) ?: null
-        var host: String? = hostClass?.host ?: null
-        var key = StringBuilder().apply {
+        val hostClass = this.javaClass.getAnnotation(Host::class.java) ?: null
+        val host: String? = hostClass?.host
+        val key = StringBuilder().apply {
             append(host ?: Mercury.host)
             append(mapUrl(fields, url))
             fields.forEach {
@@ -769,9 +769,9 @@ abstract class MercuryRequest {
 
     private fun dealUrl(): String {
 
-        var fields = this@MercuryRequest.javaClass.declaredFields
+        val fields = this@MercuryRequest.javaClass.declaredFields
 
-        var url = this.javaClass.getAnnotation(Get::class.java)?.url
+        val url = this.javaClass.getAnnotation(Get::class.java)?.url
                 ?: this.javaClass.getAnnotation(Post::class.java)?.url
                 ?: this.javaClass.getAnnotation(Patch::class.java)?.url
                 ?: this.javaClass.getAnnotation(Put::class.java)?.url
@@ -783,11 +783,11 @@ abstract class MercuryRequest {
     private fun mapUrl(fields: Array<out Field>, url: String): String {
         var temp = url
         for (i in fields.indices) {
-            var path = fields[i].getAnnotation(Path::class.java)
+            val path = fields[i].getAnnotation(Path::class.java)
             path ?: continue
-            var field = fields[i]
+            val field = fields[i]
             field.isAccessible = true
-            var value = if (TextUtils.isEmpty(path.value)) field.name else path.value
+            val value = if (TextUtils.isEmpty(path.value)) field.name else path.value
             temp = temp.replace("{$value}", field.get(this@MercuryRequest).toString(), true)
         }
         return temp
