@@ -2,8 +2,8 @@ package com.devin.mercury.utils
 
 import android.text.TextUtils
 import android.util.Base64
-import com.alibaba.fastjson.JSON
 import com.devin.mercury.Mercury
+import com.google.gson.Gson
 import java.io.*
 
 class MercuryCache {
@@ -21,7 +21,7 @@ class MercuryCache {
 
         fun <T> get(key: String, clazz: Class<T>): T? {
             return try {
-                JSON.parseObject(get(key), clazz)
+                Gson().fromJson(get(key),clazz)
             } catch (e: Exception) {
                 e.printStackTrace()
                 null

@@ -26,6 +26,7 @@ class Mercury {
         private var stackOfActivities = Stack<Activity>()
 
 
+        @JvmStatic
         fun init(builder: Builder) {
             Collections.synchronizedCollection(activities)
             mOkHttpClient = builder.getOkClient()
@@ -37,8 +38,8 @@ class Mercury {
         }
 
         private fun registerActivityLifecycleCallbacks() {
-            Mercury.context ?: throw IllegalArgumentException("Context must be not null.")
-            Mercury.context?.registerActivityLifecycleCallbacks(object : Application.ActivityLifecycleCallbacks {
+            context ?: throw IllegalArgumentException("Context must be not null.")
+            context?.registerActivityLifecycleCallbacks(object : Application.ActivityLifecycleCallbacks {
                 override fun onActivityPaused(activity: Activity?) {
                 }
                 override fun onActivityResumed(activity: Activity?) {
@@ -70,9 +71,8 @@ class Mercury {
         }
 
         private fun cancelRequest(tag: String) {
-            Mercury.mOkHttpClient
-                    ?: throw IllegalArgumentException("OkHttpClient must be not null.")
-            Mercury.mOkHttpClient?.dispatcher()?.runningCalls()?.forEach {
+            mOkHttpClient ?: throw IllegalArgumentException("OkHttpClient must be not null.")
+            mOkHttpClient?.dispatcher()?.runningCalls()?.forEach {
                 Log.d("cancelRequest", ">>>>>cancelRequest, runningCalls():  ${it.request().tag()}, ${it.isCanceled}")
                 if (tag == it.request().tag() && !it.isCanceled) {
                     it.cancel()
@@ -80,7 +80,7 @@ class Mercury {
                 }
             }
 
-            Mercury.mOkHttpClient?.dispatcher()?.queuedCalls()?.forEach {
+            mOkHttpClient?.dispatcher()?.queuedCalls()?.forEach {
                 Log.d("cancelRequest", ">>>>>cancelRequest, queuedCalls():  ${it.request().tag()}, ${it.isCanceled}")
                 if (tag == it.request().tag() && !it.isCanceled) {
                     it.cancel()

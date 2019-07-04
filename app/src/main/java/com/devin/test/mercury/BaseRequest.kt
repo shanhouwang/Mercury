@@ -1,22 +1,22 @@
 package com.devin.test.mercury
 
-import com.alibaba.fastjson.JSON
-import com.alibaba.fastjson.annotation.JSONField
 import com.devin.mercury.annotation.Header
 import com.devin.mercury.model.MercuryBuildHeaders
 import com.devin.model.mercury.MercuryRequest
+import com.google.gson.Gson
+import com.google.gson.annotations.Expose
 
 open class BaseRequest : MercuryRequest(), MercuryBuildHeaders {
 
     override fun buildHeaders(): MutableMap<String, String> {
         return mutableMapOf<String, String>().apply {
-            put("x-request-token", JSON.toJSONString(this@BaseRequest))
+            put("x-request-token", Gson().toJson(this@BaseRequest))
         }
     }
 
     @Header
-    @JSONField(serialize = false)
+    @Expose(serialize = false)
     var headers = mutableMapOf<String, String>().apply {
-        put("x-request-session", JSON.toJSONString(this@BaseRequest))
+        put("x-request-session", Gson().toJson(this@BaseRequest))
     }
 }
