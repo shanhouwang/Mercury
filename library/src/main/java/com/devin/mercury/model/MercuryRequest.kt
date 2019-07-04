@@ -555,10 +555,12 @@ abstract class MercuryRequest {
                             append(field.name)
                             append("=")
                             val encode = field.getAnnotation(Encode::class.java)
-                            val params = if (encode.value) {
-                                Uri.encode(field.get(this@MercuryRequest) as String)
+                            val params = if (encode?.value == true) {
+                                field.get(this@MercuryRequest)?.let {
+                                    Uri.encode(it.toString())
+                                }
                             } else {
-                                field.get(this@MercuryRequest) as String
+                                field.get(this@MercuryRequest)?.toString()
                             }
                             append(params)
                             if (i != fields.size - 1) {
@@ -625,7 +627,6 @@ abstract class MercuryRequest {
                     }
                     .build()
         }
-
         return throw IllegalArgumentException("request must not null.")
     }
 
