@@ -1,6 +1,10 @@
 package com.devin.test.mercury;
 
+import com.devin.mercury.config.MercuryFilter;
+import com.devin.mercury.model.MercuryFilterModel;
 import com.devin.mercury.model.MercurySuccessCallback;
+
+import org.jetbrains.annotations.NotNull;
 
 public class Test {
 

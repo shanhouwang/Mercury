@@ -313,20 +313,29 @@ abstract class MercuryRequest {
                                 var body = response?.body()?.string()
                                 println(">>>>>onResponse: $body<<<<<")
                                 /** 先走全局过滤器 */
-                                body = Mercury.globalFilter?.body(body ?: "") ?: body
+                                val global = Mercury.globalFilter?.body(body ?: "", responseClazz)
+                                if (global?.success != null && !global.success) {
+                                    failedCallback.invoke("")
+                                    return
+                                }
+                                body = global?.body ?: body
                                 println(">>>>>globalFilter body: $body<<<<<")
                                 /** 再走本次请求过滤器 */
-                                body = filter?.body(body ?: "") ?: body
+                                val thisFilter = filter?.body(body ?: "", responseClazz)
+                                if (thisFilter?.success != null && !thisFilter.success) {
+                                    failedCallback.invoke("")
+                                    return
+                                }
+                                body = thisFilter?.body ?: body
                                 println(">>>>>filter body: $body<<<<<")
                                 Mercury.handler.post {
-                                    try {
-                                        successCallback.invoke(Gson().fromJson(body, responseClazz))
+                                    val data = Gson().fromJson(body, responseClazz)
+                                    if (null == data) {
+                                        failedCallback.invoke("数据解析失败")
+                                    } else {
+                                        successCallback.invoke(data)
                                         /** 说明此时业务数据是正常的 判断是否存储 */
                                         store(body)
-                                    } catch (e: Exception) {
-                                        Mercury.handler.post {
-                                            failedCallback.invoke(e.message ?: "exception")
-                                        }
                                     }
                                 }
                             }
@@ -368,20 +377,29 @@ abstract class MercuryRequest {
                                 var body = response?.body()?.string()
                                 println(">>>>>onResponse: $body<<<<<")
                                 /** 先走全局过滤器 */
-                                body = Mercury.globalFilter?.body(body ?: "") ?: body
+                                val global = Mercury.globalFilter?.body(body ?: "", responseClazz)
+                                if (global != null && !global.success) {
+                                    failedCallback?.callback("")
+                                    return
+                                }
+                                body = global?.body ?: body
                                 println(">>>>>globalFilter body: $body<<<<<")
                                 /** 再走本次请求过滤器 */
-                                body = filter?.body(body ?: "") ?: body
+                                val thisFilter = filter?.body(body ?: "", responseClazz)
+                                if (thisFilter != null && !thisFilter.success) {
+                                    failedCallback?.callback("")
+                                    return
+                                }
+                                body = thisFilter?.body ?: body
                                 println(">>>>>filter body: $body<<<<<")
                                 Mercury.handler.post {
-                                    try {
-                                        successCallback.callback(Gson().fromJson(body, responseClazz))
+                                    val data = Gson().fromJson(body, responseClazz)
+                                    if (null == data) {
+                                        failedCallback?.callback("数据解析失败")
+                                    } else {
+                                        successCallback.callback(data)
                                         /** 说明此时业务数据是正常的 判断是否存储 */
                                         store(body)
-                                    } catch (e: Exception) {
-                                        Mercury.handler.post {
-                                            failedCallback?.callback(e.message ?: "exception")
-                                        }
                                     }
                                 }
                             }
@@ -461,6 +479,7 @@ abstract class MercuryRequest {
                 override fun shouldSkipField(f: FieldAttributes?): Boolean {
                     return this@MercuryRequest.shouldSkipField(f)
                 }
+
                 override fun shouldSkipClass(clazz: Class<*>?): Boolean {
                     return false
                 }
@@ -478,7 +497,7 @@ abstract class MercuryRequest {
                         MercuryContentType.FORM_DATA -> MultipartBody.Builder().apply {
                             fields?.forEach {
                                 if (it.type == File::class.java) {
-                                    var file = it.get(this@MercuryRequest) as File
+                                    val file = it.get(this@MercuryRequest) as File
                                     addFormDataPart(it.name
                                             , file.name
                                             , RequestBody.create(MediaType.parse("application/octet-stream"), file))
@@ -582,7 +601,8 @@ abstract class MercuryRequest {
                     callBack {
                         it ?: return@callBack
                         Mercury.handler.post {
-                            cacheCallback.invoke(it as T) }
+                            cacheCallback.invoke(it as T)
+                        }
                     }
                     start(object : ThreadUtils.MercuryRunnable<T>() {
                         override fun execute(): T? {
