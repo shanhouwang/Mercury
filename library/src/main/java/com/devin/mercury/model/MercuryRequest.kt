@@ -8,6 +8,7 @@ import com.devin.mercury.Mercury
 import com.devin.mercury.MercuryContentType
 import com.devin.mercury.annotation.*
 import com.devin.mercury.annotation.Cache
+import com.devin.mercury.config.MercuryConfig
 import com.devin.mercury.config.MercuryFilter
 import com.devin.mercury.model.*
 import com.devin.mercury.utils.MercuryCache
@@ -35,6 +36,14 @@ abstract class MercuryRequest {
     /** don't have host */
     @Ignore
     private var url: String = ""
+    @Ignore
+    private var configKey: String? = null
+
+    constructor()
+
+    constructor(configKey: String) {
+        this.configKey = configKey
+    }
 
     /**
      * 请求会根据Activity的销毁而取消
@@ -305,7 +314,7 @@ abstract class MercuryRequest {
                 .apply {
                     callBack {
                         it ?: return@callBack
-                        Mercury.mOkHttpClient?.newCall(it as Request)?.enqueue(object : Callback {
+                        getMercuryConfig()?.getOkClient()?.newCall(it as Request)?.enqueue(object : Callback {
                             override fun onResponse(call: Call?, response: Response?) {
                                 Mercury.handler.post {
                                     endCallback.invoke()
@@ -313,7 +322,8 @@ abstract class MercuryRequest {
                                 var body = response?.body()?.string()
                                 println(">>>>>onResponse: $body<<<<<")
                                 /** 先走全局过滤器 */
-                                val global = Mercury.globalFilter?.body(body ?: "", responseClazz)
+                                val global = getMercuryConfig()?.getGlobalFilter()?.body(body
+                                        ?: "", responseClazz)
                                 if (global?.success != null && !global.success) {
                                     failedCallback.invoke("")
                                     return
@@ -355,6 +365,10 @@ abstract class MercuryRequest {
                 }
     }
 
+    private fun getMercuryConfig(): MercuryConfig? {
+        return Mercury.map[configKey ?: Mercury.defaultMercuryConfigKey]
+    }
+
     private fun <T> build(responseClazz: Class<T>, startCallback: MercuryStartCallback?, endCallback: MercuryEndCallback?, successCallback: MercurySuccessCallback<T>, cacheCallback: MercuryCacheCallback<T>?, failedCallback: MercuryFailedCallback?) {
 
         startCallback?.callback()
@@ -369,7 +383,7 @@ abstract class MercuryRequest {
                 .apply {
                     callBack {
                         it ?: return@callBack
-                        Mercury.mOkHttpClient?.newCall(it as Request)?.enqueue(object : Callback {
+                        getMercuryConfig()?.getOkClient()?.newCall(it as Request)?.enqueue(object : Callback {
                             override fun onResponse(call: Call?, response: Response?) {
                                 Mercury.handler.post {
                                     endCallback?.callback()
@@ -377,7 +391,8 @@ abstract class MercuryRequest {
                                 var body = response?.body()?.string()
                                 println(">>>>>onResponse: $body<<<<<")
                                 /** 先走全局过滤器 */
-                                val global = Mercury.globalFilter?.body(body ?: "", responseClazz)
+                                val global = getMercuryConfig()?.getGlobalFilter()?.body(body
+                                        ?: "", responseClazz)
                                 if (global != null && !global.success) {
                                     failedCallback?.callback("")
                                     return
@@ -430,7 +445,7 @@ abstract class MercuryRequest {
             return Request.Builder()
                     .url(StringBuilder().apply {
                         var isAppend = true
-                        append(host ?: Mercury.host)
+                        append(host ?: getMercuryConfig()?.getHost())
                         append(url)
                         for (i in fields.indices) {
                             val field = fields[i]
@@ -474,7 +489,7 @@ abstract class MercuryRequest {
         val post = this.javaClass.getAnnotation(Post::class.java) ?: null
         if (null != post) {
             val type = this.javaClass.getAnnotation(ContentType::class.java)?.type
-                    ?: Mercury.contentType
+                    ?: getMercuryConfig()?.getContentType()
             val g = GsonBuilder().addSerializationExclusionStrategy(object : ExclusionStrategy {
                 override fun shouldSkipField(f: FieldAttributes?): Boolean {
                     return this@MercuryRequest.shouldSkipField(f)
@@ -509,7 +524,7 @@ abstract class MercuryRequest {
                         else -> throw IllegalArgumentException("not find content type $type.")
                     }
             return Request.Builder()
-                    .url((host ?: Mercury.host) + url)
+                    .url((host ?: getMercuryConfig()?.getHost()) + url)
                     .tag(tag)
                     .post(requestBody)
                     .apply {
@@ -521,7 +536,7 @@ abstract class MercuryRequest {
         val delete = this.javaClass.getAnnotation(Delete::class.java) ?: null
         if (null != delete) {
             return Request.Builder()
-                    .url((host ?: Mercury.host) + url)
+                    .url((host ?: getMercuryConfig()?.getHost()) + url)
                     .tag(tag)
                     .delete()
                     .apply {
@@ -606,7 +621,7 @@ abstract class MercuryRequest {
                     }
                     start(object : ThreadUtils.MercuryRunnable<T>() {
                         override fun execute(): T? {
-                            return MercuryCache.get(key, responseClazz)
+                            return getMercuryConfig()?.let { MercuryCache.get(it, key, responseClazz) }
                         }
                     })
                 }
@@ -632,7 +647,7 @@ abstract class MercuryRequest {
                     }
                     start(object : ThreadUtils.MercuryRunnable<T>() {
                         override fun execute(): T? {
-                            return MercuryCache.get(key, responseClazz)
+                            return getMercuryConfig()?.let { MercuryCache.get(it, key, responseClazz) }
                         }
                     })
                 }
@@ -647,7 +662,7 @@ abstract class MercuryRequest {
         ThreadUtils
                 .get(ThreadUtils.Type.CACHED)
                 .start {
-                    MercuryCache.put(key, body)
+                    getMercuryConfig()?.let { MercuryCache.put(it, key, body) }
                 }
     }
 
@@ -661,7 +676,7 @@ abstract class MercuryRequest {
         val hostClass = this.javaClass.getAnnotation(Host::class.java) ?: null
         val host: String? = hostClass?.host
         val key = StringBuilder().apply {
-            append(host ?: Mercury.host)
+            append(host ?: getMercuryConfig()?.getHost())
             append(mapUrl(fields, url))
             fields.forEach {
                 append("&")

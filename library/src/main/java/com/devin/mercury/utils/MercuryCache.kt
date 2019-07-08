@@ -3,7 +3,9 @@ package com.devin.mercury.utils
 import android.text.TextUtils
 import android.util.Base64
 import com.devin.mercury.Mercury
+import com.devin.mercury.config.MercuryConfig
 import com.google.gson.Gson
+import okhttp3.OkHttpClient
 import java.io.*
 
 class MercuryCache {
@@ -12,24 +14,24 @@ class MercuryCache {
 
         private const val MERCURY_CACHE = "mercury_cache"
 
-        private fun getCacheDir(): File {
-            return File(Mercury.mOkHttpClient?.cache()?.directory()?.path
-                    ?: (Mercury.context?.externalCacheDir?.path + File.separator + MERCURY_CACHE + File.separator)).apply {
+        private fun getCacheDir(mercury: MercuryConfig): File {
+            return File(mercury.getOkClient()?.cache()?.directory()?.path
+                    ?: (mercury.getApplication()?.externalCacheDir?.path + File.separator + MERCURY_CACHE + File.separator)).apply {
                 if (!exists()) mkdirs()
             }
         }
 
-        fun <T> get(key: String, clazz: Class<T>): T? {
+        fun <T> get(mercury: MercuryConfig, key: String, clazz: Class<T>): T? {
             return try {
-                Gson().fromJson(get(key),clazz)
+                Gson().fromJson(get(mercury, key), clazz)
             } catch (e: Exception) {
                 e.printStackTrace()
                 null
             }
         }
 
-        fun get(key: String): String? {
-            var f = File(getCacheDir(), String(Base64.encode(key.toByteArray(), Base64.DEFAULT)))
+        fun get(mercury: MercuryConfig, key: String): String? {
+            val f = File(getCacheDir(mercury), String(Base64.encode(key.toByteArray(), Base64.DEFAULT)))
             var data = ""
             if (f.exists()) {
                 var reader: BufferedReader?
@@ -49,8 +51,8 @@ class MercuryCache {
             return data
         }
 
-        fun put(key: String, data: String?) {
-            var f = File(getCacheDir(), String(Base64.encode(key.toByteArray(), Base64.DEFAULT)))
+        fun put(mercury: MercuryConfig, key: String, data: String?) {
+            val f = File(getCacheDir(mercury), String(Base64.encode(key.toByteArray(), Base64.DEFAULT)))
             var out: BufferedWriter? = null
             var fw: FileWriter? = null
             try {

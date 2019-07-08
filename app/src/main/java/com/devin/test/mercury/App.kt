@@ -3,6 +3,7 @@ package com.devin.test.mercury
 import android.app.Application
 import com.devin.mercury.Mercury
 import com.devin.mercury.MercuryContentType
+import com.devin.mercury.config.MercuryConfig
 import com.devin.mercury.interceptor.HttpLoggingInterceptor
 import com.readystatesoftware.chuck.ChuckInterceptor
 import okhttp3.OkHttpClient

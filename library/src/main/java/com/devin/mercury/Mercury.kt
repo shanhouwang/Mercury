@@ -2,10 +2,12 @@ package com.devin.mercury
 
 import android.app.Activity
 import android.app.Application
+import android.content.Context
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import com.devin.mercury.config.MercuryConfig
 import com.devin.mercury.config.MercuryFilter
 import com.devin.mercury.utils.ThreadUtils
 import okhttp3.OkHttpClient
@@ -15,76 +17,75 @@ class Mercury {
 
     companion object {
 
-        var context: Application? = null
-        var mOkHttpClient: OkHttpClient? = null
-        var contentType: String? = null
-        var host: String? = null
-        /** 全局过滤器 */
-        var globalFilter: MercuryFilter? = null
+        const val defaultMercuryConfigKey = "default_mercury_config"
+        @JvmStatic
+        var map = mutableMapOf<String, MercuryConfig>()
         var handler = Handler(Looper.getMainLooper())
         var activities = mutableSetOf<Activity>()
         private var stackOfActivities = Stack<Activity>()
 
-
         @JvmStatic
         fun init(builder: Builder) {
             Collections.synchronizedCollection(activities)
-            mOkHttpClient = builder.getOkClient()
-            contentType = builder.getContentType()
-            context = builder.getContext()
-            host = builder.getHost()
-            globalFilter = builder.getGlobalFilter()
-            registerActivityLifecycleCallbacks()
+            map[defaultMercuryConfigKey] = builder
+            registerActivityLifecycleCallbacks(defaultMercuryConfigKey)
         }
 
-        private fun registerActivityLifecycleCallbacks() {
-            context ?: throw IllegalArgumentException("Context must be not null.")
-            context?.registerActivityLifecycleCallbacks(object : Application.ActivityLifecycleCallbacks {
-                override fun onActivityPaused(activity: Activity?) {
-                }
-                override fun onActivityResumed(activity: Activity?) {
-                }
-                override fun onActivityStarted(activity: Activity?) {
-                }
-                override fun onActivitySaveInstanceState(activity: Activity?, outState: Bundle?) {
-                }
-                override fun onActivityStopped(activity: Activity?) {
-                }
+        @JvmStatic
+        fun addMercuryConfig(config: MercuryConfig) {
+            map[config.getConfigName()] = config
+            registerActivityLifecycleCallbacks(config.getConfigName())
+        }
+
+        fun getMercuryConfig(configKey: String): MercuryConfig? {
+            return map[configKey]
+        }
+
+        private fun registerActivityLifecycleCallbacks(configKey: String) {
+            getMercuryConfig(configKey)?.getApplication()
+                    ?: throw IllegalArgumentException("Context must be not null.")
+            getMercuryConfig(configKey)?.getApplication()?.registerActivityLifecycleCallbacks(object : Application.ActivityLifecycleCallbacks {
+                override fun onActivityPaused(activity: Activity?) {}
+                override fun onActivityResumed(activity: Activity?) {}
+                override fun onActivityStarted(activity: Activity?) {}
+                override fun onActivitySaveInstanceState(activity: Activity?, outState: Bundle?) {}
+                override fun onActivityStopped(activity: Activity?) {}
                 override fun onActivityCreated(activity: Activity?, savedInstanceState: Bundle?) {
                     stackOfActivities.add(activity)
                 }
+
                 override fun onActivityDestroyed(activity: Activity?) {
                     stackOfActivities.remove(activity)
                     if (activities.contains(activity)) {
                         ThreadUtils.get(ThreadUtils.Type.CACHED).start {
-                            cancelRequest(activity?.javaClass?.name + activity?.hashCode())
+                            cancelRequest(getMercuryConfig(configKey), activity?.javaClass?.name + activity?.hashCode())
                         }
                         activities.remove(activity)
                     } else {
                         /** 如果用户调用了 requestByLifecycle 方法 */
                         ThreadUtils.get(ThreadUtils.Type.CACHED).start {
-                            cancelRequest(activity?.javaClass?.name + activity?.hashCode() + "requestByLifecycle")
+                            cancelRequest(getMercuryConfig(configKey), activity?.javaClass?.name + activity?.hashCode() + "requestByLifecycle")
                         }
                     }
                 }
             })
         }
 
-        private fun cancelRequest(tag: String) {
-            mOkHttpClient ?: throw IllegalArgumentException("OkHttpClient must be not null.")
-            mOkHttpClient?.dispatcher()?.runningCalls()?.forEach {
-                Log.d("cancelRequest", ">>>>>cancelRequest, runningCalls():  ${it.request().tag()}, ${it.isCanceled}")
+        private fun cancelRequest(config: MercuryConfig?, tag: String) {
+            config?.getOkClient()
+                    ?: throw IllegalArgumentException("OkHttpClient must be not null.")
+            config.getOkClient()?.dispatcher()?.runningCalls()?.forEach {
+                println(">>>>>cancelRequest, runningCalls():  ${it.request().tag()}, ${it.isCanceled}")
                 if (tag == it.request().tag() && !it.isCanceled) {
                     it.cancel()
-                    Log.e("cancelRequest", ">>>>>cancelRequest, runningCalls():  ${it.request().tag()}, ${it.isCanceled}")
+                    println(">>>>>cancelRequest, runningCalls():  ${it.request().tag()}, ${it.isCanceled}")
                 }
             }
-
-            mOkHttpClient?.dispatcher()?.queuedCalls()?.forEach {
-                Log.d("cancelRequest", ">>>>>cancelRequest, queuedCalls():  ${it.request().tag()}, ${it.isCanceled}")
+            config.getOkClient()?.dispatcher()?.queuedCalls()?.forEach {
+                println(">>>>>cancelRequest, queuedCalls():  ${it.request().tag()}, ${it.isCanceled}")
                 if (tag == it.request().tag() && !it.isCanceled) {
                     it.cancel()
-                    Log.e("cancelRequest", ">>>>>cancelRequest queuedCalls():  ${it.request().tag()}, ${it.isCanceled}")
+                    println(">>>>>cancelRequest queuedCalls():  ${it.request().tag()}, ${it.isCanceled}")
                 }
             }
         }
@@ -100,7 +101,30 @@ class Mercury {
 
     }
 
-    class Builder {
+    class Builder : MercuryConfig {
+        override fun getApplication(): Application? {
+            return context
+        }
+
+        override fun getOkClient(): OkHttpClient? {
+            return okHttpClient
+        }
+
+        override fun getContentType(): String? {
+            return contentType
+        }
+
+        override fun getHost(): String? {
+            return host
+        }
+
+        override fun getGlobalFilter(): MercuryFilter? {
+            return globalFilter
+        }
+
+        override fun getConfigName(): String {
+            return defaultMercuryConfigKey
+        }
 
         private var context: Application? = null
         private var okHttpClient: OkHttpClient? = null
@@ -108,27 +132,7 @@ class Mercury {
         private var host: String? = null
         private var globalFilter: MercuryFilter? = null
 
-        fun getContext(): Application? {
-            return context
-        }
-
-        fun getOkClient(): OkHttpClient? {
-            return okHttpClient
-        }
-
-        fun getContentType(): String? {
-            return contentType
-        }
-
-        fun getHost(): String? {
-            return host
-        }
-
-        fun getGlobalFilter(): MercuryFilter? {
-            return globalFilter
-        }
-
-        /** 设置全局的Context */
+        /** 设置全局的OkHttpClient */
         fun context(context: Application): Builder {
             this.context = context
             return this@Builder
