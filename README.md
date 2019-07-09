@@ -94,26 +94,31 @@ class BaseRequest : MercuryRequest()
 @Cache
 class MainRequest(var id: String, var name: String) : MercuryRequest()
 ```
-### request
+## Request
+### 一般情况下只需要一行代码
+```
+LastContactsRequest(shopId).requestByLifecycle(LastContactsResponse::class.java,{})
+```
+### 可重载
 ```
 BaseRequest("10086", "Devin")
 	.request(BaseResponse::class.java
 	, startCallback = {
 		progressBar.visibility = View.VISIBLE
-			println(">>>>>start: ${Thread.currentThread().id}<<<<<")
+			println(">>>>>start: $请求开始的回调<<<<<")
  	}
 	, endCallback = {
 		progressBar.visibility = View.GONE
-		println(">>>>>end: ${Thread.currentThread().id}<<<<<")
+		println(">>>>>end: $请求结束的回调<<<<<")
 	}
 	, successCallback = {
-		println(">>>>>success: ${Thread.currentThread().id}<<<<<")
+		println(">>>>>success: $成功解析成实体后的回调<<<<<")
 	}
 	, cacheCallback = {
-		println(">>>>>cache: ${Thread.currentThread().id}<<<<<")
+		println(">>>>>cache: $如果设置了Cache注解，Cache回调会首先返回<<<<<")
 	}
 	, failedCallback = {
-		println(">>>>>fail: ${Thread.currentThread().id}<<<<<")
+		println(">>>>>fail: $失败的回调<<<<<")
 	}
 )
 ```
@@ -124,20 +129,20 @@ MainRequest("10086", "Devin：$i")
 	.requestByLifecycle(BaseResponse::class.java
 		, startCallback = {
 		progressBar.visibility = View.VISIBLE
-		println(">>>>>start: ${Thread.currentThread().id}<<<<<")
+		println(">>>>>start: $请求开始的回调<<<<<")
 	}
 	, endCallback = {
 		progressBar.visibility = View.GONE
-		println(">>>>>end: ${Thread.currentThread().id}<<<<<")
+		println(">>>>>end: $请求结束的回调<<<<<")
 	}
 	, successCallback = {
-		println(">>>>>success: ${Thread.currentThread().id}<<<<<")
+		println(">>>>>success: $成功解析成实体后的回调<<<<<")
 	}
 	, cacheCallback = {
-		println(">>>>>cache: ${Thread.currentThread().id}<<<<<")
+		println(">>>>>cache: $如果设置了Cache注解，Cache回调会首先返回<<<<<")
 	}
 	, failedCallback = {
-		println(">>>>>fail: ${Thread.currentThread().id}<<<<<")
+		println(">>>>>fail: $失败的回调<<<<<")
 	}
 	)
 }
