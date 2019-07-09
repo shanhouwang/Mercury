@@ -61,7 +61,7 @@ Mercury.addMercuryConfig(object : MercuryConfig {
 ### 1、Get
 ```
 @Get(url = "")
-class BaseRequest : MercuryRequest() // // 此次请求会被默认的MercuryConfig调用
+class BaseRequest : MercuryRequest() // 此次请求会被默认的MercuryConfig调用
 ```
 ```
 @Get(url = "")
