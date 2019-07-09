@@ -7,38 +7,65 @@
 ## 引入项目
 
 ```
-implementation 'com.devin:mercury:0.0.1'
+implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.2.50"
+implementation 'com.devin:mercury:0.0.6'
+implementation 'com.squareup.okhttp3:okhttp:3.10.0'
+implementation 'com.google.code.gson:gson:2.8.0'
 ```
 ## 初始化
-
+### 主工程里面的请求
 ```
-Mercury.init(object : Mercury.MercuryBuilder {
-	override fun host(): String {
-		return "http://www.baidu.com/"
-	}
-
-	override fun getContext(): Application {
-		return this@App
-	}
-
-	override fun okHttpClient(): OkHttpClient {
-		return OkHttpClient.Builder()
-            .addInterceptor(HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BODY))
-                        .addInterceptor(ChuckInterceptor(this@App).showNotification(true))
-                        .build()
-	}
-
-	override fun defaultContentType(): String {
-		return MercuryContentType.JSON
-	}
-})
+Mercury.init(Mercury.Builder()                                                                        
+        .context(this@App)                                                                            
+        .host("http://www.baidu.com/")                                                                
+        .okHttpClient(OkHttpClient.Builder()                                                          
+                .addInterceptor(HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BODY)) 
+                .addInterceptor(ChuckInterceptor(this@App).showNotification(true))                    
+                .build())                                                                             
+        .contentType(MercuryContentType.JSON))                                                        
+```
+### 项目中可能还需要单独配置一套OkhttpClient
+```
+Mercury.addMercuryConfig(object : MercuryConfig {                                                     
+    override fun getApplication(): Application? {                                                     
+        return this@App                                                                               
+    }                                                                                                 
+                                                                                                      
+    override fun getOkClient(): OkHttpClient? {                                                       
+        return OkHttpClient.Builder()                                                                 
+                .addInterceptor(HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BODY)) 
+                .addInterceptor(ChuckInterceptor(this@App).showNotification(true))                    
+                .build()                                                                              
+    }                                                                                                 
+                                                                                                      
+    override fun getContentType(): String? {                                                          
+        return MercuryContentType.JSON                                                                
+    }                                                                                                 
+                                                                                                      
+    override fun getHost(): String? {                                                                 
+        return "https://www.im.com/"                                                               
+    }                                                                                                 
+                                                                                                      
+    override fun getGlobalFilter(): MercuryFilter? {
+        // 可以做加密解密等操作                                                  
+        return null                                                                                   
+    }                                                                                                 
+                                                                                                      
+    override fun getConfigName(): String {                                                            
+        return "IM"                                                                                   
+    }                                                                                                 
+})                                                                                                    
 ```
 ## 使用方法
 ## 构建RequestModel
 ### 1、Get
 ```
 @Get(url = "")
-class BaseRequest : MercuryRequest()
+class BaseRequest : MercuryRequest() // // 此次请求会被默认的MercuryConfig调用
+```
+```
+@Get(url = "")
+class IMBaseRequest : MercuryRequest(“IM”) // 此次请求会被叫“IM”的MercuryConfig调用
 ```
 ### 2、Post
 ```
