@@ -11,6 +11,7 @@ import com.devin.mercury.annotation.Cache
 import com.devin.mercury.config.MercuryConfig
 import com.devin.mercury.config.MercuryFilter
 import com.devin.mercury.model.*
+import com.devin.mercury.utils.MLog
 import com.devin.mercury.utils.MercuryCache
 import com.devin.mercury.utils.ThreadUtils
 import com.google.gson.ExclusionStrategy
@@ -20,6 +21,7 @@ import com.google.gson.GsonBuilder
 import okhttp3.*
 import java.io.File
 import java.io.IOException
+import java.lang.Exception
 import java.lang.reflect.Field
 
 /**
@@ -81,7 +83,7 @@ abstract class MercuryRequest {
      * @param successCallback 成功回调方法
      * @param failedCallback 失败回调方法
      */
-    fun <T> request(responseClazz: Class<T>, successCallback: T.() -> Unit, failedCallback: String.() -> Unit) {
+    fun <T> request(responseClazz: Class<T>, successCallback: T.() -> Unit, failedCallback: MercuryException.() -> Unit) {
         build(responseClazz, {}, {}, successCallback, {}, failedCallback)
     }
 
@@ -121,7 +123,7 @@ abstract class MercuryRequest {
      * @param successCallback 成功回调方法
      * @param failedCallback 失败回调方法
      */
-    fun <T> request(responseClazz: Class<T>, startCallback: () -> Unit, endCallback: () -> Unit, successCallback: T.() -> Unit, failedCallback: String.() -> Unit) {
+    fun <T> request(responseClazz: Class<T>, startCallback: () -> Unit, endCallback: () -> Unit, successCallback: T.() -> Unit, failedCallback: MercuryException.() -> Unit) {
         build(responseClazz, startCallback, endCallback, successCallback, {}, failedCallback)
     }
 
@@ -144,7 +146,7 @@ abstract class MercuryRequest {
      * @param cacheCallback 本地缓存回调
      * @param failedCallback 失败回调方法
      */
-    fun <T> request(responseClazz: Class<T>, startCallback: () -> Unit, endCallback: () -> Unit, successCallback: T.() -> Unit, cacheCallback: T.() -> Unit, failedCallback: String.() -> Unit) {
+    fun <T> request(responseClazz: Class<T>, startCallback: () -> Unit, endCallback: () -> Unit, successCallback: T.() -> Unit, cacheCallback: T.() -> Unit, failedCallback: MercuryException.() -> Unit) {
         build(responseClazz, startCallback, endCallback, successCallback, cacheCallback, failedCallback)
     }
 
@@ -187,7 +189,7 @@ abstract class MercuryRequest {
      * @param successCallback 成功回调方法
      * @param failedCallback 失败回调方法
      */
-    fun <T> requestByLifecycle(responseClazz: Class<T>, successCallback: T.() -> Unit, failedCallback: String.() -> Unit) {
+    fun <T> requestByLifecycle(responseClazz: Class<T>, successCallback: T.() -> Unit, failedCallback: MercuryException.() -> Unit) {
         buildByLifecycle(responseClazz, {}, {}, successCallback, {}, failedCallback)
     }
 
@@ -235,7 +237,7 @@ abstract class MercuryRequest {
      * @param successCallback 成功回调方法
      * @param failedCallback 失败回调方法
      */
-    fun <T> requestByLifecycle(responseClazz: Class<T>, startCallback: () -> Unit, endCallback: () -> Unit, successCallback: T.() -> Unit, failedCallback: String.() -> Unit) {
+    fun <T> requestByLifecycle(responseClazz: Class<T>, startCallback: () -> Unit, endCallback: () -> Unit, successCallback: T.() -> Unit, failedCallback: MercuryException.() -> Unit) {
         buildByLifecycle(responseClazz, startCallback, endCallback, successCallback, {}, failedCallback)
     }
 
@@ -262,7 +264,7 @@ abstract class MercuryRequest {
      * @param cacheCallback 本地缓存回调
      * @param failedCallback 失败回调方法
      */
-    fun <T> requestByLifecycle(responseClazz: Class<T>, startCallback: () -> Unit, endCallback: () -> Unit, successCallback: T.() -> Unit, cacheCallback: T.() -> Unit, failedCallback: String.() -> Unit) {
+    fun <T> requestByLifecycle(responseClazz: Class<T>, startCallback: () -> Unit, endCallback: () -> Unit, successCallback: T.() -> Unit, cacheCallback: T.() -> Unit, failedCallback: MercuryException.() -> Unit) {
         buildByLifecycle(responseClazz, startCallback, endCallback, successCallback, cacheCallback, failedCallback)
     }
 
@@ -280,7 +282,7 @@ abstract class MercuryRequest {
         buildByLifecycle(responseClazz, startCallback, endCallback, successCallback, cacheCallback, failedCallback)
     }
 
-    private fun <T> buildByLifecycle(responseClazz: Class<T>, startCallback: () -> Unit, endCallback: () -> Unit, successCallback: T.() -> Unit, cacheCallback: T.() -> Unit, failedCallback: String.() -> Unit) {
+    private fun <T> buildByLifecycle(responseClazz: Class<T>, startCallback: () -> Unit, endCallback: () -> Unit, successCallback: T.() -> Unit, cacheCallback: T.() -> Unit, failedCallback: MercuryException.() -> Unit) {
         tag()
         build(responseClazz, startCallback, endCallback, successCallback, cacheCallback, failedCallback)
     }
@@ -300,7 +302,7 @@ abstract class MercuryRequest {
         build(responseClazz, startCallback, endCallback, successCallback, cacheCallback, failedCallback)
     }
 
-    private fun <T> build(responseClazz: Class<T>, startCallback: () -> Unit, endCallback: () -> Unit, successCallback: T.() -> Unit, cacheCallback: T.() -> Unit, failedCallback: String.() -> Unit) {
+    private fun <T> build(responseClazz: Class<T>, startCallback: () -> Unit, endCallback: () -> Unit, successCallback: T.() -> Unit, cacheCallback: T.() -> Unit, failedCallback: MercuryException.() -> Unit) {
 
         startCallback.invoke()
 
@@ -320,39 +322,38 @@ abstract class MercuryRequest {
                                     endCallback.invoke()
                                 }
                                 var body = response?.body()?.string()
-                                println(">>>>>onResponse: $body<<<<<")
+                                MLog.d(">>>>>onResponse: $body<<<<<")
                                 /** 先走全局过滤器 */
-                                val global = getMercuryConfig()?.getGlobalFilter()?.body(body
-                                        ?: "", responseClazz)
+                                val global = getMercuryConfig()?.getGlobalFilter()?.body(body ?: "", responseClazz)
                                 if (global?.success != null && !global.success) {
-                                    failedCallback.invoke("")
+                                    failedCallback.invoke(global.exception ?: MercuryException(OTHER_EXCEPTION, ""))
                                     return
                                 }
                                 body = global?.body ?: body
-                                println(">>>>>globalFilter body: $body<<<<<")
+                                MLog.d(">>>>>globalFilter body: $body<<<<<")
                                 /** 再走本次请求过滤器 */
                                 val thisFilter = filter?.body(body ?: "", responseClazz)
                                 if (thisFilter?.success != null && !thisFilter.success) {
-                                    failedCallback.invoke("")
+                                    failedCallback.invoke(thisFilter.exception ?: MercuryException(OTHER_EXCEPTION, ""))
                                     return
                                 }
                                 body = thisFilter?.body ?: body
-                                println(">>>>>filter body: $body<<<<<")
+                                MLog.d(">>>>>filter body: $body<<<<<")
                                 Mercury.handler.post {
-                                    val data = Gson().fromJson(body, responseClazz)
-                                    if (null == data) {
-                                        failedCallback.invoke("数据解析失败")
-                                    } else {
+                                    try {
+                                        val data = Gson().fromJson(body, responseClazz)
                                         successCallback.invoke(data)
                                         /** 说明此时业务数据是正常的 判断是否存储 */
                                         store(body)
+                                    } catch (e: Exception) {
+                                        failedCallback.invoke(MercuryException(DATA_PARSER_EXCEPTION, "数据解析失败"))
                                     }
                                 }
                             }
 
                             override fun onFailure(call: Call?, e: IOException?) {
                                 Mercury.handler.post {
-                                    failedCallback.invoke(e?.message ?: "exception")
+                                    failedCallback.invoke(MercuryException(IO_EXCEPTION, e?.message ?: ""))
                                 }
                             }
                         })
@@ -389,39 +390,38 @@ abstract class MercuryRequest {
                                     endCallback?.callback()
                                 }
                                 var body = response?.body()?.string()
-                                println(">>>>>onResponse: $body<<<<<")
+                                MLog.d(">>>>>onResponse: $body<<<<<")
                                 /** 先走全局过滤器 */
-                                val global = getMercuryConfig()?.getGlobalFilter()?.body(body
-                                        ?: "", responseClazz)
+                                val global = getMercuryConfig()?.getGlobalFilter()?.body(body ?: "", responseClazz)
                                 if (global != null && !global.success) {
-                                    failedCallback?.callback("")
+                                    failedCallback?.callback(global.exception ?: MercuryException(OTHER_EXCEPTION, ""))
                                     return
                                 }
                                 body = global?.body ?: body
-                                println(">>>>>globalFilter body: $body<<<<<")
+                                MLog.d(">>>>>globalFilter body: $body<<<<<")
                                 /** 再走本次请求过滤器 */
                                 val thisFilter = filter?.body(body ?: "", responseClazz)
                                 if (thisFilter != null && !thisFilter.success) {
-                                    failedCallback?.callback("")
+                                    failedCallback?.callback(thisFilter.exception ?: MercuryException(OTHER_EXCEPTION, ""))
                                     return
                                 }
                                 body = thisFilter?.body ?: body
-                                println(">>>>>filter body: $body<<<<<")
+                                MLog.d(">>>>>filter body: $body<<<<<")
                                 Mercury.handler.post {
-                                    val data = Gson().fromJson(body, responseClazz)
-                                    if (null == data) {
-                                        failedCallback?.callback("数据解析失败")
-                                    } else {
+                                    try {
+                                        val data = Gson().fromJson(body, responseClazz)
                                         successCallback.callback(data)
                                         /** 说明此时业务数据是正常的 判断是否存储 */
                                         store(body)
+                                    } catch (e: Exception) {
+                                        failedCallback?.callback(MercuryException(DATA_PARSER_EXCEPTION, "数据解析失败"))
                                     }
                                 }
                             }
 
                             override fun onFailure(call: Call?, e: IOException?) {
                                 Mercury.handler.post {
-                                    failedCallback?.callback(e?.message ?: "exception")
+                                    failedCallback?.callback(MercuryException(IO_EXCEPTION, e?.message ?: ""))
                                 }
                             }
                         })
@@ -505,7 +505,7 @@ abstract class MercuryRequest {
                         MercuryContentType.FORM -> FormBody.Builder().apply {
                             fields?.forEach {
                                 it.isAccessible = true
-                                println(">>>>>${it.name}, ${it.type}, ${it.get(this@MercuryRequest)}<<<<<")
+                                MLog.d(">>>>>${it.name}, ${it.type}, ${it.get(this@MercuryRequest)}<<<<<")
                                 addEncoded(it.name, it.get(this@MercuryRequest)?.toString())
                             }
                         }.build()
@@ -513,9 +513,7 @@ abstract class MercuryRequest {
                             fields?.forEach {
                                 if (it.type == File::class.java) {
                                     val file = it.get(this@MercuryRequest) as File
-                                    addFormDataPart(it.name
-                                            , file.name
-                                            , RequestBody.create(MediaType.parse("application/octet-stream"), file))
+                                    addFormDataPart(it.name, file.name, RequestBody.create(MediaType.parse("application/octet-stream"), file))
                                 } else {
                                     addFormDataPart(it.name, it.get(this@MercuryRequest).toString())
                                 }
@@ -609,7 +607,7 @@ abstract class MercuryRequest {
             throw IllegalArgumentException("Method must be get or post.")
         }
         val key = generateKey() ?: return@getCache
-        println(">>>>>key：$key<<<<<")
+        MLog.d(">>>>>key：$key<<<<<")
         ThreadUtils
                 .get(ThreadUtils.Type.CACHED)
                 .apply {
@@ -635,7 +633,7 @@ abstract class MercuryRequest {
             throw IllegalArgumentException("Method must be get or post.")
         }
         val key = generateKey() ?: return@getCache
-        println(">>>>>key：$key<<<<<")
+        MLog.d(">>>>>key：$key<<<<<")
         ThreadUtils
                 .get(ThreadUtils.Type.CACHED)
                 .apply {
@@ -658,7 +656,7 @@ abstract class MercuryRequest {
         body ?: return@store
         this.javaClass.getAnnotation(Cache::class.java) ?: return@store
         val key = generateKey() ?: return@store
-        println(">>>>>key：$key<<<<<")
+        MLog.d(">>>>>key：$key<<<<<")
         ThreadUtils
                 .get(ThreadUtils.Type.CACHED)
                 .start {
