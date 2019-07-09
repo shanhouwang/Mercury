@@ -15,14 +15,27 @@ implementation 'com.google.code.gson:gson:2.8.0'
 ## 初始化
 ### 主工程里面的请求
 ```
-Mercury.init(Mercury.Builder()                                                                        
-        .context(this@App)                                                                            
-        .host("http://www.baidu.com/")                                                                
-        .okHttpClient(OkHttpClient.Builder()                                                          
-                .addInterceptor(HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BODY)) 
-                .addInterceptor(ChuckInterceptor(this@App).showNotification(true))                    
-                .build())                                                                             
-        .contentType(MercuryContentType.JSON))                                                        
+Mercury.init(Mercury.Builder()                                                                                                   
+        .context(this@App)                                                                                                       
+        .host("http://www.baidu.com/")                                                                                           
+        .okHttpClient(OkHttpClient.Builder()                                                                                     
+                .addInterceptor(HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BODY))                            
+                .addInterceptor(ChuckInterceptor(this@App).showNotification(true))                                               
+                .build())                                                                                                        
+        .filter(object : MercuryFilter {                                                                                         
+            override fun body(body: String, clazz: Class<*>): MercuryFilterModel {
+                // 比如：返回的JSON Body {"success":true,"code":0,"data":"7mAFuvXiU1"} 其中data字段是加密的，我们可以解密，然后在传给下一层
+                // 还可以根据code做一些业务判断，比如code是-100的时候需要重新登录，如果model.success = false，会走Fail回调，如果model.success = true，会走Success回调，可以做一些拦截                                               
+                val model = MercuryFilterModel()                                                                                 
+                val parser = JsonParser()                                                                                        
+                val jsonObject = parser.parse(body).asJsonObject                                                                 
+                val data = jsonObject.get("data").asString                                                                       
+                jsonObject.add("data", parser.parse(AES.INSTANCE.decryptAES(CommonBusinessStaticValue.AES_KEY, data)))           
+                model.body = jsonObject.toString()                                                                               
+                return model                                                                                                     
+            }                                                                                                                    
+        })                                                                                                                       
+        .contentType(MercuryContentType.JSON))                                                                                                                                           
 ```
 ### 项目中可能还需要单独配置一套OkhttpClient
 ```
