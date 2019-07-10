@@ -7,7 +7,7 @@ import com.devin.mercury.config.MercuryConfig
 import com.devin.mercury.config.MercuryFilter
 import com.devin.mercury.interceptor.HttpLoggingInterceptor
 import com.devin.mercury.model.MercuryFilterModel
-import com.google.gson.JsonParser
+import com.devin.mercury.utils.MLog
 import com.readystatesoftware.chuck.ChuckInterceptor
 import okhttp3.OkHttpClient
 
@@ -60,5 +60,6 @@ class App : Application() {
                 return "IM"
             }
         })
+        MLog.debug = true
     }
 }

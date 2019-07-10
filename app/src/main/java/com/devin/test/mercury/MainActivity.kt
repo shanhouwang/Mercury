@@ -14,25 +14,6 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        println(">>>>>main thread: ${Thread.currentThread().id}<<<<<")
-
-        IMRequest("10000", "devin").requestByLifecycle(BaseResponse::class.java) {
-        }
-        IMRequest("10000", "devin").request(BaseResponse::class.java, {
-            println("回调")
-        }, {
-            println("失败")
-        })
-        IMRequest("10000", "devin").requestByLifecycle(BaseResponse::class.java, {
-            println("开始")
-        }, {
-            println("结束")
-        }, {
-            println("回调")
-        }, {
-            println("失败")
-        })
-
         for (i in 0 until 1) {
             MainRequest("10086", " ")
                     .requestByLifecycle(BaseResponse::class.java

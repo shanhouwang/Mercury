@@ -11,10 +11,10 @@ import com.devin.mercury.BuildConfig;
 public class MLog {
 
     private static final String TAG = MLog.class.getSimpleName();
-    private static final boolean DEBUG = BuildConfig.DEBUG;
+    public static boolean debug = BuildConfig.DEBUG;
 
     public static void d(String msg) {
-        if (DEBUG && !TextUtils.isEmpty(msg)) {
+        if (debug && !TextUtils.isEmpty(msg)) {
             Log.d(TAG, msg);
         }
     }
@@ -26,7 +26,7 @@ public class MLog {
      * @param msg
      */
     public static void show(String tag, String msg) {
-        if (DEBUG && !TextUtils.isEmpty(msg)) {
+        if (debug && !TextUtils.isEmpty(msg)) {
             StackTraceElement[] stackTraceElement = Thread.currentThread().getStackTrace();
             int currentIndex = -1;
             for (int i = 0; i < stackTraceElement.length; i++) {
@@ -51,19 +51,19 @@ public class MLog {
     }
 
     public static void d(String tag, String msg) {
-        if (DEBUG && !TextUtils.isEmpty(msg)) {
+        if (debug && !TextUtils.isEmpty(msg)) {
             Log.d(tag, msg);
         }
     }
 
     public static void e(String tag, String msg) {
-        if (DEBUG && !TextUtils.isEmpty(msg)) {
+        if (debug && !TextUtils.isEmpty(msg)) {
             Log.e(tag, msg);
         }
     }
 
     public static void i(String tag, String msg) {
-        if (DEBUG && !TextUtils.isEmpty(msg)) {
+        if (debug && !TextUtils.isEmpty(msg)) {
             Log.i(tag, msg);
         }
     }

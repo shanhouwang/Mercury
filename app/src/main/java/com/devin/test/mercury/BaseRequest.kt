@@ -10,7 +10,7 @@ open class BaseRequest : MercuryRequest(), MercuryBuildHeaders {
 
     override fun buildHeaders(): MutableMap<String, String> {
         return mutableMapOf<String, String>().apply {
-            put("x-request-token", Gson().toJson(this@BaseRequest))
+            put("x-request-token", Gson().toJson(this))
         }
     }
 

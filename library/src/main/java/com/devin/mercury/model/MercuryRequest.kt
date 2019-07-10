@@ -18,10 +18,10 @@ import com.google.gson.ExclusionStrategy
 import com.google.gson.FieldAttributes
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
+import kotlinx.coroutines.*
 import okhttp3.*
 import java.io.File
 import java.io.IOException
-import java.lang.Exception
 import java.lang.reflect.Field
 
 /**
@@ -35,11 +35,24 @@ abstract class MercuryRequest {
     private var mercuryBuildHeaders: MercuryBuildHeaders? = null
     @Ignore
     private var filter: MercuryFilter? = null
-    /** don't have host */
-    @Ignore
-    private var url: String = ""
     @Ignore
     private var configKey: String? = null
+    @Ignore
+    private val fields by lazy { this@MercuryRequest.javaClass.declaredFields }
+    @Ignore
+    private val getAnnotation: Get? by lazy { this@MercuryRequest.javaClass.getAnnotation(Get::class.java) }
+    @Ignore
+    private val postAnnotation: Post? by lazy { this@MercuryRequest.javaClass.getAnnotation(Post::class.java) }
+    @Ignore
+    private val patchAnnotation: Patch? by lazy { this@MercuryRequest.javaClass.getAnnotation(Patch::class.java) }
+    @Ignore
+    private val putAnnotation: Put? by lazy { this@MercuryRequest.javaClass.getAnnotation(Put::class.java) }
+    @Ignore
+    private val deleteAnnotation: Delete? by lazy { this@MercuryRequest.javaClass.getAnnotation(Delete::class.java) }
+    @Ignore
+    private val hostAnnotation: Host? by lazy { this@MercuryRequest.javaClass.getAnnotation(Host::class.java) }
+    @Ignore
+    private val cacheAnnotation: Cache? by lazy { this@MercuryRequest.javaClass.getAnnotation(Cache::class.java) }
 
     constructor()
 
@@ -302,182 +315,120 @@ abstract class MercuryRequest {
         build(responseClazz, startCallback, endCallback, successCallback, cacheCallback, failedCallback)
     }
 
-    private fun <T> build(responseClazz: Class<T>, startCallback: () -> Unit, endCallback: () -> Unit, successCallback: T.() -> Unit, cacheCallback: T.() -> Unit, failedCallback: MercuryException.() -> Unit) {
-
+    private fun <T> build(responseClazz: Class<T>, startCallback: () -> Unit, endCallback: () -> Unit, successCallback: T.() -> Unit, cacheCallback: T.() -> Unit, failedCallback: MercuryException.() -> Unit) = runBlocking<Unit> {
+        "build".getThreadName()
         startCallback.invoke()
 
-        url = dealUrl()
-
         /** 判断是否使用缓存 */
-        getCache(responseClazz, cacheCallback = { cacheCallback() })
+        getCache(responseClazz, cacheCallback)
 
-        ThreadUtils
-                .get(ThreadUtils.Type.CACHED)
-                .apply {
-                    callBack {
-                        it ?: return@callBack
-                        getMercuryConfig()?.getOkClient()?.newCall(it as Request)?.enqueue(object : Callback {
-                            override fun onResponse(call: Call?, response: Response?) {
-                                Mercury.handler.post {
-                                    endCallback.invoke()
-                                }
-                                var body = response?.body()?.string()
-                                MLog.d(">>>>>onResponse: $body<<<<<")
-                                /** 先走全局过滤器 */
-                                val global = getMercuryConfig()?.getGlobalFilter()?.body(body ?: "", responseClazz)
-                                if (global?.success != null && !global.success) {
-                                    failedCallback.invoke(global.exception ?: MercuryException(OTHER_EXCEPTION, ""))
-                                    return
-                                }
-                                body = global?.body ?: body
-                                MLog.d(">>>>>globalFilter body: $body<<<<<")
-                                /** 再走本次请求过滤器 */
-                                val thisFilter = filter?.body(body ?: "", responseClazz)
-                                if (thisFilter?.success != null && !thisFilter.success) {
-                                    failedCallback.invoke(thisFilter.exception ?: MercuryException(OTHER_EXCEPTION, ""))
-                                    return
-                                }
-                                body = thisFilter?.body ?: body
-                                MLog.d(">>>>>filter body: $body<<<<<")
-                                Mercury.handler.post {
-                                    try {
-                                        val data = Gson().fromJson(body, responseClazz)
-                                        successCallback.invoke(data)
-                                        /** 说明此时业务数据是正常的 判断是否存储 */
-                                        store(body)
-                                    } catch (e: Exception) {
-                                        failedCallback.invoke(MercuryException(DATA_PARSER_EXCEPTION, "数据解析失败"))
-                                    }
-                                }
-                            }
-
-                            override fun onFailure(call: Call?, e: IOException?) {
-                                Mercury.handler.post {
-                                    failedCallback.invoke(MercuryException(IO_EXCEPTION, e?.message ?: ""))
-                                }
-                            }
-                        })
-                    }
-                    start(object : ThreadUtils.MercuryRunnable<Request>() {
-                        override fun execute(): Request {
-                            return buildRequest()
-                        }
-                    })
+        getMercuryConfig()?.getOkClient()?.newCall(buildRequest(dealUrl()))?.enqueue(object : Callback {
+            override fun onResponse(call: Call?, response: Response?) {
+                Mercury.handler.post {
+                    endCallback.invoke()
                 }
+                var body = response?.body()?.string()
+                MLog.d(">>>>>onResponse: $body<<<<<")
+                /** 先走全局过滤器 */
+                val global = getMercuryConfig()?.getGlobalFilter()?.body(body ?: "", responseClazz)
+                if (global?.success != null && !global.success) {
+                    failedCallback.invoke(global.exception ?: MercuryException(OTHER_EXCEPTION, ""))
+                    return
+                }
+                body = global?.body ?: body
+                MLog.d(">>>>>globalFilter body: $body<<<<<")
+                /** 再走本次请求过滤器 */
+                val thisFilter = filter?.body(body ?: "", responseClazz)
+                if (thisFilter?.success != null && !thisFilter.success) {
+                    failedCallback.invoke(thisFilter.exception ?: MercuryException(OTHER_EXCEPTION, ""))
+                    return
+                }
+                body = thisFilter?.body ?: body
+                MLog.d(">>>>>filter body: $body<<<<<")
+                Mercury.handler.post {
+                    try {
+                        val data = Gson().fromJson(body, responseClazz)
+                        successCallback.invoke(data)
+                        /** 说明此时业务数据是正常的 判断是否存储 */
+                        async {
+                            store(body)
+                        }
+                    } catch (e: Exception) {
+                        failedCallback.invoke(MercuryException(DATA_PARSER_EXCEPTION, "数据解析失败"))
+                    }
+                }
+            }
+
+            override fun onFailure(call: Call?, e: IOException?) {
+                Mercury.handler.post {
+                    failedCallback.invoke(MercuryException(IO_EXCEPTION, e?.message ?: ""))
+                }
+            }
+        })
     }
 
     private fun getMercuryConfig(): MercuryConfig? {
         return Mercury.map[configKey ?: Mercury.defaultMercuryConfigKey]
     }
 
-    private fun <T> build(responseClazz: Class<T>, startCallback: MercuryStartCallback?, endCallback: MercuryEndCallback?, successCallback: MercurySuccessCallback<T>, cacheCallback: MercuryCacheCallback<T>?, failedCallback: MercuryFailedCallback?) {
-
+    private fun <T> build(responseClazz: Class<T>, startCallback: MercuryStartCallback?, endCallback: MercuryEndCallback?, successCallback: MercurySuccessCallback<T>, cacheCallback: MercuryCacheCallback<T>?, failedCallback: MercuryFailedCallback?) = runBlocking<Unit> {
+        "build".getThreadName()
         startCallback?.callback()
-
-        url = dealUrl()
 
         /** 判断是否使用缓存 */
         getCache(responseClazz, cacheCallback)
 
-        ThreadUtils
-                .get(ThreadUtils.Type.CACHED)
-                .apply {
-                    callBack {
-                        it ?: return@callBack
-                        getMercuryConfig()?.getOkClient()?.newCall(it as Request)?.enqueue(object : Callback {
-                            override fun onResponse(call: Call?, response: Response?) {
-                                Mercury.handler.post {
-                                    endCallback?.callback()
-                                }
-                                var body = response?.body()?.string()
-                                MLog.d(">>>>>onResponse: $body<<<<<")
-                                /** 先走全局过滤器 */
-                                val global = getMercuryConfig()?.getGlobalFilter()?.body(body ?: "", responseClazz)
-                                if (global != null && !global.success) {
-                                    failedCallback?.callback(global.exception ?: MercuryException(OTHER_EXCEPTION, ""))
-                                    return
-                                }
-                                body = global?.body ?: body
-                                MLog.d(">>>>>globalFilter body: $body<<<<<")
-                                /** 再走本次请求过滤器 */
-                                val thisFilter = filter?.body(body ?: "", responseClazz)
-                                if (thisFilter != null && !thisFilter.success) {
-                                    failedCallback?.callback(thisFilter.exception ?: MercuryException(OTHER_EXCEPTION, ""))
-                                    return
-                                }
-                                body = thisFilter?.body ?: body
-                                MLog.d(">>>>>filter body: $body<<<<<")
-                                Mercury.handler.post {
-                                    try {
-                                        val data = Gson().fromJson(body, responseClazz)
-                                        successCallback.callback(data)
-                                        /** 说明此时业务数据是正常的 判断是否存储 */
-                                        store(body)
-                                    } catch (e: Exception) {
-                                        failedCallback?.callback(MercuryException(DATA_PARSER_EXCEPTION, "数据解析失败"))
-                                    }
-                                }
-                            }
-
-                            override fun onFailure(call: Call?, e: IOException?) {
-                                Mercury.handler.post {
-                                    failedCallback?.callback(MercuryException(IO_EXCEPTION, e?.message ?: ""))
-                                }
-                            }
-                        })
-                    }
-                    start(object : ThreadUtils.MercuryRunnable<Request>() {
-                        override fun execute(): Request {
-                            return buildRequest()
-                        }
-                    })
+        getMercuryConfig()?.getOkClient()?.newCall(buildRequest(dealUrl()))?.enqueue(object : Callback {
+            override fun onResponse(call: Call?, response: Response?) {
+                Mercury.handler.post {
+                    endCallback?.callback()
                 }
+                var body = response?.body()?.string()
+                MLog.d(">>>>>onResponse: $body<<<<<")
+                /** 先走全局过滤器 */
+                val global = getMercuryConfig()?.getGlobalFilter()?.body(body ?: "", responseClazz)
+                if (global != null && !global.success) {
+                    failedCallback?.callback(global.exception ?: MercuryException(OTHER_EXCEPTION, ""))
+                    return
+                }
+                body = global?.body ?: body
+                MLog.d(">>>>>globalFilter body: $body<<<<<")
+                /** 再走本次请求过滤器 */
+                val thisFilter = filter?.body(body ?: "", responseClazz)
+                if (thisFilter != null && !thisFilter.success) {
+                    failedCallback?.callback(thisFilter.exception ?: MercuryException(OTHER_EXCEPTION, ""))
+                    return
+                }
+                body = thisFilter?.body ?: body
+                MLog.d(">>>>>filter body: $body<<<<<")
+                Mercury.handler.post {
+                    try {
+                        val data = Gson().fromJson(body, responseClazz)
+                        successCallback.callback(data)
+                        /** 说明此时业务数据是正常的 判断是否存储 */
+                        async {
+                            store(body)
+                        }
+                    } catch (e: Exception) {
+                        failedCallback?.callback(MercuryException(DATA_PARSER_EXCEPTION, "数据解析失败"))
+                    }
+                }
+            }
+
+            override fun onFailure(call: Call?, e: IOException?) {
+                Mercury.handler.post {
+                    failedCallback?.callback(MercuryException(IO_EXCEPTION, e?.message ?: ""))
+                }
+            }
+        })
     }
 
-    private fun buildRequest(): Request {
-
-        val hostClass = this.javaClass.getAnnotation(Host::class.java) ?: null
-        val host: String? = hostClass?.host
-        val fields = this@MercuryRequest.javaClass.declaredFields
-        val get = this.javaClass.getAnnotation(Get::class.java) ?: null
-
-        if (null != get) {
-            return Request.Builder()
-                    .url(StringBuilder().apply {
-                        var isAppend = true
-                        append(host ?: getMercuryConfig()?.getHost())
-                        append(url)
-                        for (i in fields.indices) {
-                            val field = fields[i]
-                            val h = field.getAnnotation(Header::class.java)
-                            if (null != h) {
-                                continue
-                            }
-                            val path = field.getAnnotation(Path::class.java)
-                            if (null != path) {
-                                continue
-                            }
-                            if (isAppend) {
-                                append("?")
-                                isAppend = false
-                            }
-                            field.isAccessible = true
-                            append(field.name)
-                            append("=")
-                            val encode = field.getAnnotation(Encode::class.java)
-                            val params = if (encode?.value == true) {
-                                field.get(this@MercuryRequest)?.let {
-                                    Uri.encode(it.toString())
-                                }
-                            } else {
-                                field.get(this@MercuryRequest)?.toString()
-                            }
-                            append(params)
-                            if (i != fields.size - 1) {
-                                append("&")
-                            }
-                        }
-                    }.toString())
+    private suspend fun buildRequest(url: String): Request = withContext(Dispatchers.Default) {
+        "buildRequest".getThreadName()
+        val host: String? = hostAnnotation?.host
+        if (null != getAnnotation) {
+            return@withContext Request.Builder()
+                    .url(appendGetMethodUrl(host, url, fields))
                     .apply {
                         buildHeaders(this@MercuryRequest, this)
                     }
@@ -485,43 +436,39 @@ abstract class MercuryRequest {
                     .get()
                     .build()
         }
-
-        val post = this.javaClass.getAnnotation(Post::class.java) ?: null
-        if (null != post) {
-            val type = this.javaClass.getAnnotation(ContentType::class.java)?.type
-                    ?: getMercuryConfig()?.getContentType()
+        if (null != postAnnotation) {
+            val type = this@MercuryRequest.javaClass.getAnnotation(ContentType::class.java)?.type ?: getMercuryConfig()?.getContentType()
             val g = GsonBuilder().addSerializationExclusionStrategy(object : ExclusionStrategy {
-                override fun shouldSkipField(f: FieldAttributes?): Boolean {
-                    return this@MercuryRequest.shouldSkipField(f)
+                override fun shouldSkipField(attributes: FieldAttributes?): Boolean {
+                    return this@MercuryRequest.shouldSkipField(attributes)
                 }
 
                 override fun shouldSkipClass(clazz: Class<*>?): Boolean {
                     return false
                 }
             }).create()
-            val requestBody: RequestBody =
-                    when (type) {
-                        MercuryContentType.JSON -> RequestBody.create(MediaType.parse(type), g.toJson(this@MercuryRequest))
-                        MercuryContentType.FORM -> FormBody.Builder().apply {
-                            fields?.forEach {
-                                it.isAccessible = true
-                                MLog.d(">>>>>${it.name}, ${it.type}, ${it.get(this@MercuryRequest)}<<<<<")
-                                addEncoded(it.name, it.get(this@MercuryRequest)?.toString())
-                            }
-                        }.build()
-                        MercuryContentType.FORM_DATA -> MultipartBody.Builder().apply {
-                            fields?.forEach {
-                                if (it.type == File::class.java) {
-                                    val file = it.get(this@MercuryRequest) as File
-                                    addFormDataPart(it.name, file.name, RequestBody.create(MediaType.parse("application/octet-stream"), file))
-                                } else {
-                                    addFormDataPart(it.name, it.get(this@MercuryRequest).toString())
-                                }
-                            }
-                        }.build()
-                        else -> throw IllegalArgumentException("not find content type $type.")
+            val requestBody: RequestBody = when (type) {
+                MercuryContentType.JSON -> RequestBody.create(MediaType.parse(type), g.toJson(this@MercuryRequest))
+                MercuryContentType.FORM -> FormBody.Builder().apply {
+                    fields?.forEach {
+                        it.isAccessible = true
+                        MLog.d(">>>>>${it.name}, ${it.type}, ${it.get(this@MercuryRequest)}<<<<<")
+                        addEncoded(it.name, it.get(this@MercuryRequest)?.toString())
                     }
-            return Request.Builder()
+                }.build()
+                MercuryContentType.FORM_DATA -> MultipartBody.Builder().apply {
+                    fields?.forEach {
+                        if (it.type == File::class.java) {
+                            val file = it.get(this@MercuryRequest) as File
+                            addFormDataPart(it.name, file.name, RequestBody.create(MediaType.parse("application/octet-stream"), file))
+                        } else {
+                            addFormDataPart(it.name, it.get(this@MercuryRequest).toString())
+                        }
+                    }
+                }.build()
+                else -> throw IllegalArgumentException("not find content type $type.")
+            }
+            return@withContext Request.Builder()
                     .url((host ?: getMercuryConfig()?.getHost()) + url)
                     .tag(tag)
                     .post(requestBody)
@@ -531,9 +478,8 @@ abstract class MercuryRequest {
                     .build()
         }
 
-        val delete = this.javaClass.getAnnotation(Delete::class.java) ?: null
-        if (null != delete) {
-            return Request.Builder()
+        if (null != deleteAnnotation) {
+            return@withContext Request.Builder()
                     .url((host ?: getMercuryConfig()?.getHost()) + url)
                     .tag(tag)
                     .delete()
@@ -542,7 +488,46 @@ abstract class MercuryRequest {
                     }
                     .build()
         }
-        return throw IllegalArgumentException("request must not null.")
+        throw IllegalArgumentException("request must not null.")
+    }
+
+    private suspend fun appendGetMethodUrl(host: String?, url: String, fields: Array<out Field>): String = withContext(Dispatchers.Default) {
+        "appendGetMethodUrl".getThreadName()
+        StringBuilder().apply {
+            var isAppend = true
+            append(host ?: getMercuryConfig()?.getHost())
+            append(url)
+            for (i in fields.indices) {
+                val field = fields[i]
+                val h = field.getAnnotation(Header::class.java)
+                if (null != h) {
+                    continue
+                }
+                val path = field.getAnnotation(Path::class.java)
+                if (null != path) {
+                    continue
+                }
+                if (isAppend) {
+                    append("?")
+                    isAppend = false
+                }
+                field.isAccessible = true
+                append(field.name)
+                append("=")
+                val encode = field.getAnnotation(Encode::class.java)
+                val params = if (encode?.value == true) {
+                    field.get(this@MercuryRequest)?.let {
+                        Uri.encode(it.toString())
+                    }
+                } else {
+                    field.get(this@MercuryRequest)?.toString()
+                }
+                append(params)
+                if (i != fields.size - 1) {
+                    append("&")
+                }
+            }
+        }.toString()
     }
 
     private fun shouldSkipField(f: FieldAttributes?): Boolean {
@@ -564,7 +549,8 @@ abstract class MercuryRequest {
         return false
     }
 
-    private fun buildHeaders(request: MercuryRequest, builder: Request.Builder) {
+    private suspend fun buildHeaders(request: MercuryRequest, builder: Request.Builder) = withContext(Dispatchers.Default) {
+        "buildHeaders".getThreadName()
         request.getHeadersByAnnotation(builder, this@MercuryRequest.javaClass)
         if (this@MercuryRequest is MercuryBuildHeaders) {
             mercuryBuildHeaders = this@MercuryRequest
@@ -572,9 +558,10 @@ abstract class MercuryRequest {
         }
     }
 
-    private fun <T> getHeadersByAnnotation(request: Request.Builder, clazz: Class<T>) {
+    private suspend fun <T> getHeadersByAnnotation(request: Request.Builder, clazz: Class<T>): Unit = withContext(Dispatchers.Default) {
+        "getHeadersByAnnotation".getThreadName()
         if (clazz == MercuryRequest::class.java) {
-            return@getHeadersByAnnotation
+            return@withContext
         }
         val fields = clazz.declaredFields
         for (i in fields.indices) {
@@ -587,7 +574,7 @@ abstract class MercuryRequest {
                     request.headers(Headers.Builder().apply {
                         headers.mapValues { (k, v) -> add(k, Base64.encodeToString(v.toByteArray(), Base64.NO_WRAP)) }
                     }.build())
-                    return@getHeadersByAnnotation
+                    return@withContext
                 } catch (e: ClassCastException) {
                     throw IllegalArgumentException("Header must be a MutableMap<String,String>.")
                 }
@@ -599,80 +586,51 @@ abstract class MercuryRequest {
         }
     }
 
-    private fun <T> getCache(responseClazz: Class<T>, cacheCallback: T.() -> Unit) {
-
-        this.javaClass.getAnnotation(Cache::class.java) ?: return@getCache
-        if (null == this.javaClass.getAnnotation(Get::class.java)
-                && null == this.javaClass.getAnnotation(Post::class.java)) {
+    private suspend fun <T> getCache(responseClazz: Class<T>, cacheCallback: T.() -> Unit) = withContext(Dispatchers.Default) {
+        "getCache".getThreadName()
+        cacheAnnotation ?: return@withContext
+        if (null == getAnnotation && null == postAnnotation) {
             throw IllegalArgumentException("Method must be get or post.")
         }
-        val key = generateKey() ?: return@getCache
+        val key = generateKey() ?: return@withContext
         MLog.d(">>>>>key：$key<<<<<")
-        ThreadUtils
-                .get(ThreadUtils.Type.CACHED)
-                .apply {
-                    callBack {
-                        it ?: return@callBack
-                        Mercury.handler.post {
-                            cacheCallback.invoke(it as T)
-                        }
-                    }
-                    start(object : ThreadUtils.MercuryRunnable<T>() {
-                        override fun execute(): T? {
-                            return getMercuryConfig()?.let { MercuryCache.get(it, key, responseClazz) }
-                        }
-                    })
-                }
+        Mercury.handler.post {
+            val data = getMercuryConfig()?.let { MercuryCache.get(it, key, responseClazz) }
+            data?.let {
+                cacheCallback.invoke(it)
+            }
+        }
     }
 
-    private fun <T> getCache(responseClazz: Class<T>, cacheCallback: MercuryCacheCallback<T>?) {
-
-        this.javaClass.getAnnotation(Cache::class.java) ?: return@getCache
-        if (null == this.javaClass.getAnnotation(Get::class.java)
-                && null == this.javaClass.getAnnotation(Post::class.java)) {
+    private suspend fun <T> getCache(responseClazz: Class<T>, cacheCallback: MercuryCacheCallback<T>?) = withContext(Dispatchers.Default) {
+        "getCache".getThreadName()
+        cacheAnnotation ?: return@withContext
+        if (null == getAnnotation && null == postAnnotation) {
             throw IllegalArgumentException("Method must be get or post.")
         }
-        val key = generateKey() ?: return@getCache
+        val key = generateKey() ?: return@withContext
         MLog.d(">>>>>key：$key<<<<<")
-        ThreadUtils
-                .get(ThreadUtils.Type.CACHED)
-                .apply {
-                    callBack {
-                        it ?: return@callBack
-                        Mercury.handler.post {
-                            cacheCallback?.callback(it as T)
-                        }
-                    }
-                    start(object : ThreadUtils.MercuryRunnable<T>() {
-                        override fun execute(): T? {
-                            return getMercuryConfig()?.let { MercuryCache.get(it, key, responseClazz) }
-                        }
-                    })
-                }
+        Mercury.handler.post {
+            val data = getMercuryConfig()?.let { MercuryCache.get(it, key, responseClazz) }
+            data?.let {
+                cacheCallback?.callback(it)
+            }
+        }
     }
 
-    private fun store(body: String?) {
-
-        body ?: return@store
-        this.javaClass.getAnnotation(Cache::class.java) ?: return@store
-        val key = generateKey() ?: return@store
+    private suspend fun store(body: String?) = withContext(Dispatchers.Default) {
+        "store".getThreadName()
+        body ?: return@withContext
+        cacheAnnotation ?: return@withContext
+        val key = generateKey() ?: return@withContext
         MLog.d(">>>>>key：$key<<<<<")
-        ThreadUtils
-                .get(ThreadUtils.Type.CACHED)
-                .start {
-                    getMercuryConfig()?.let { MercuryCache.put(it, key, body) }
-                }
+        getMercuryConfig()?.let { MercuryCache.put(it, key, body) }
     }
 
-    private fun generateKey(): String? {
-
-        val fields = this@MercuryRequest.javaClass.declaredFields
-
-        val url = this.javaClass.getAnnotation(Get::class.java)?.url
-                ?: this.javaClass.getAnnotation(Post::class.java)?.url
-                ?: return null
-        val hostClass = this.javaClass.getAnnotation(Host::class.java) ?: null
-        val host: String? = hostClass?.host
+    private suspend fun generateKey(): String? = withContext(Dispatchers.Default) {
+        "generateKey".getThreadName()
+        val url = getAnnotation?.url ?: postAnnotation?.url ?: return@withContext null
+        val host: String? = hostAnnotation?.host
         val key = StringBuilder().apply {
             append(host ?: getMercuryConfig()?.getHost())
             append(mapUrl(fields, url))
@@ -683,23 +641,17 @@ abstract class MercuryRequest {
             }
         }.toString()
 
-        return Base64.encodeToString(key.toByteArray(), Base64.NO_WRAP)
+        return@withContext Base64.encodeToString(key.toByteArray(), Base64.NO_WRAP)
     }
 
-    private fun dealUrl(): String {
-
-        val fields = this@MercuryRequest.javaClass.declaredFields
-
-        val url = this.javaClass.getAnnotation(Get::class.java)?.url
-                ?: this.javaClass.getAnnotation(Post::class.java)?.url
-                ?: this.javaClass.getAnnotation(Patch::class.java)?.url
-                ?: this.javaClass.getAnnotation(Put::class.java)?.url
-                ?: ""
-
-        return mapUrl(fields, url)
+    private suspend fun dealUrl() = withContext(Dispatchers.Default) {
+        "dealUrl".getThreadName()
+        val url = getAnnotation?.url ?: postAnnotation?.url ?: patchAnnotation?.url ?: putAnnotation?.url ?: deleteAnnotation?.url ?: ""
+        return@withContext mapUrl(fields, url)
     }
 
-    private fun mapUrl(fields: Array<out Field>, url: String): String {
+    private suspend fun mapUrl(fields: Array<out Field>, url: String): String = withContext(Dispatchers.Default) {
+        "mapUrl, $url".getThreadName()
         var temp = url
         for (i in fields.indices) {
             val path = fields[i].getAnnotation(Path::class.java)
@@ -709,7 +661,11 @@ abstract class MercuryRequest {
             val value = if (TextUtils.isEmpty(path.value)) field.name else path.value
             temp = temp.replace("{$value}", field.get(this@MercuryRequest).toString(), true)
         }
-        return temp
+        return@withContext temp
+    }
+
+    private fun String.getThreadName() {
+        MLog.d(">>>>>coroutines: $this, ${Thread.currentThread().name}")
     }
 
 }
