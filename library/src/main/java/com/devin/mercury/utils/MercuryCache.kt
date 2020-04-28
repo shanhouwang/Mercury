@@ -2,10 +2,8 @@ package com.devin.mercury.utils
 
 import android.text.TextUtils
 import android.util.Base64
-import com.devin.mercury.Mercury
 import com.devin.mercury.config.MercuryConfig
 import com.google.gson.Gson
-import okhttp3.OkHttpClient
 import java.io.*
 
 class MercuryCache {

@@ -8,4 +8,4 @@ import java.io.File
 
 @Post(url = "")
 @ContentType(type = MercuryContentType.FORM_DATA)
-class UpdateAvatarRequest(var userId: String, var avatar: File) : MercuryRequest()
+class UpdateAvatarRequest(var userId: String, var avatar: File) : MercuryRequest<String>()

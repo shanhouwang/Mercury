@@ -6,7 +6,7 @@ import com.devin.model.mercury.MercuryRequest
 import com.google.gson.Gson
 import com.google.gson.annotations.Expose
 
-open class BaseRequest : MercuryRequest(), MercuryBuildHeaders {
+open class BaseRequest : MercuryRequest<String>(), MercuryBuildHeaders {
 
     override fun buildHeaders(): MutableMap<String, String> {
         return mutableMapOf<String, String>().apply {

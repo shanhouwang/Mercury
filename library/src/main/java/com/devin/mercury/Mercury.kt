@@ -2,11 +2,9 @@ package com.devin.mercury
 
 import android.app.Activity
 import android.app.Application
-import android.content.Context
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.util.Log
 import com.devin.mercury.config.MercuryConfig
 import com.devin.mercury.config.MercuryFilter
 import com.devin.mercury.utils.ThreadUtils
@@ -153,12 +151,6 @@ class Mercury {
         /** 设置全局Host */
         fun host(host: String): Builder {
             this.host = host
-            return this@Builder
-        }
-
-        /** 设置全局过滤器 */
-        fun filter(filter: MercuryFilter): Builder {
-            this.globalFilter = filter
             return this@Builder
         }
     }
