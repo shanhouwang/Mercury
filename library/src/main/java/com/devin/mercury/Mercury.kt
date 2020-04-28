@@ -153,5 +153,11 @@ class Mercury {
             this.host = host
             return this@Builder
         }
+
+        /** 设置全局过滤器 */
+        fun filter(filter: MercuryFilter): Builder {
+            this.globalFilter = filter
+            return this@Builder
+        }
     }
 }
