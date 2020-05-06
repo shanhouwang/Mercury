@@ -15,7 +15,7 @@ public class MLog {
 
     public static void d(String msg) {
         if (debug && !TextUtils.isEmpty(msg)) {
-            Log.d(TAG, msg);
+            Log.d(TAG, msg + " [" + Thread.currentThread().getName() + "]");
         }
     }
 

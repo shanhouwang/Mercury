@@ -5,6 +5,7 @@ import android.util.Base64
 import com.devin.mercury.config.MercuryConfig
 import com.google.gson.Gson
 import java.io.*
+import java.lang.reflect.Type
 
 class MercuryCache {
 
@@ -19,11 +20,10 @@ class MercuryCache {
             }
         }
 
-        fun <T> get(mercury: MercuryConfig, key: String, clazz: Class<T>): T? {
+        fun get(mercury: MercuryConfig, key: String, clazz: Type): Any? {
             return try {
                 Gson().fromJson(get(mercury, key), clazz)
             } catch (e: Exception) {
-                e.printStackTrace()
                 null
             }
         }

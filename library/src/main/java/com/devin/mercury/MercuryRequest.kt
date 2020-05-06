@@ -328,6 +328,7 @@ abstract class MercuryRequest<T> {
     }
 
     private fun CoroutineScope.doResponse(endCallback: () -> Unit, response: Response?, failedCallback: MercuryException.() -> Unit, successCallback: T.() -> Unit) {
+        "doResponse".getThreadName()
         Mercury.handler.post {
             endCallback.invoke()
         }
@@ -344,21 +345,22 @@ abstract class MercuryRequest<T> {
         /** 再走本次请求过滤器 */
         val thisFilter = filter?.body(body ?: "", getType())
         if (thisFilter?.success != null && !thisFilter.success) {
-            failedCallback.invoke(thisFilter.exception
-                    ?: MercuryException(OTHER_EXCEPTION, ""))
+            failedCallback.invoke(thisFilter.exception ?: MercuryException(OTHER_EXCEPTION, ""))
             return
         }
         body = thisFilter?.body ?: body
         MLog.d(">>>>>filter body: $body<<<<<")
-        Mercury.handler.post {
-            try {
-                val data = Gson().fromJson(body, getType()) as T
+        try {
+            val data = Gson().fromJson(body, getType()) as T
+            Mercury.handler.post {
                 successCallback.invoke(data)
-                /** 说明此时业务数据是正常的 判断是否存储 */
-                async {
-                    store(body)
-                }
-            } catch (e: Exception) {
+            }
+            /** 说明此时业务数据是正常的 判断是否存储 */
+            async {
+                store(body)
+            }
+        } catch (e: Exception) {
+            Mercury.handler.post {
                 failedCallback.invoke(MercuryException(DATA_PARSER_EXCEPTION, "数据解析失败"))
             }
         }
@@ -540,7 +542,7 @@ abstract class MercuryRequest<T> {
         doCache(cacheCallback)
     }
 
-    private suspend fun MercuryRequest<T>.doCache(cacheCallback: T.() -> Unit) {
+    private suspend fun doCache(cacheCallback: T.() -> Unit) {
         "getCache".getThreadName()
         cacheAnnotation ?: return
         if (null == getAnnotation && null == postAnnotation) {
@@ -548,8 +550,8 @@ abstract class MercuryRequest<T> {
         }
         val key = generateKey() ?: return
         MLog.d(">>>>>key：$key<<<<<")
+        val data = getMercuryConfig()?.let { MercuryCache.get(it, key, getType()) }
         Mercury.handler.post {
-            val data = getMercuryConfig()?.let { MercuryCache.get(it, key, getType() as Class<T>) }
             data?.let {
                 cacheCallback.invoke(it as T)
             }
@@ -610,7 +612,7 @@ abstract class MercuryRequest<T> {
     }
 
     private fun String.getThreadName() {
-        MLog.d(">>>>>coroutines: $this, ${Thread.currentThread().name}")
+        MLog.d(">>>>>coroutines: $this")
     }
 
     private fun getType(): Type {
