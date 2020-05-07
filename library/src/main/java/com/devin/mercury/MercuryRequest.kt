@@ -17,13 +17,18 @@ import com.google.gson.ExclusionStrategy
 import com.google.gson.FieldAttributes
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
-import kotlinx.coroutines.*
+import com.google.gson.reflect.TypeToken
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import okhttp3.*
 import java.io.File
 import java.io.IOException
 import java.lang.reflect.Field
 import java.lang.reflect.ParameterizedType
 import java.lang.reflect.Type
+import java.util.*
 
 
 /**
@@ -388,17 +393,41 @@ abstract class MercuryRequest<T> {
         if (null != postAnnotation) {
             val type = this@MercuryRequest.javaClass.getAnnotation(ContentType::class.java)?.type
                     ?: getMercuryConfig()?.getContentType()
-            val g = GsonBuilder().addSerializationExclusionStrategy(object : ExclusionStrategy {
-                override fun shouldSkipField(attributes: FieldAttributes?): Boolean {
-                    return this@MercuryRequest.shouldSkipField(attributes)
-                }
-
-                override fun shouldSkipClass(clazz: Class<*>?): Boolean {
-                    return false
-                }
-            }).create()
             val requestBody: RequestBody = when (type) {
-                MercuryContentType.JSON -> RequestBody.create(MediaType.parse(type), g.toJson(this@MercuryRequest))
+                MercuryContentType.JSON -> {
+                    val gson = GsonBuilder()
+                            .addSerializationExclusionStrategy(object : ExclusionStrategy {
+                                override fun shouldSkipField(attributes: FieldAttributes?): Boolean {
+                                    return this@MercuryRequest.shouldSkipField(attributes)
+                                }
+
+                                override fun shouldSkipClass(clazz: Class<*>?): Boolean {
+                                    return false
+                                }
+                            }).create()
+                    var paramsAny = zipParams()
+                    var param: Any? = null
+                    if (paramsAny.size > 1) {
+                        throw IllegalArgumentException("Must Just Have Only One @ZipParams Definition, Can Not >1")
+                    }
+                    if (paramsAny.size > 0) {
+                        param = paramsAny[0]
+                    }
+                    var paramsJSON = ""
+                    if (null != param) {
+                        var map: HashMap<String, Any> = gson.fromJson(gson.toJson(param), object : TypeToken<HashMap<String, Any>>() {}.type)
+                        fields?.forEach {
+                            it.isAccessible = true
+                            if (!shouldSkipField(it)) {
+                                map[it.name] = it.get(this@MercuryRequest)
+                            }
+                        }
+                        paramsJSON = gson.toJson(map)
+                    } else {
+                        paramsJSON = gson.toJson(this@MercuryRequest)
+                    }
+                    RequestBody.create(MediaType.parse(type), paramsJSON)
+                }
                 MercuryContentType.FORM -> FormBody.Builder().apply {
                     fields?.forEach {
                         it.isAccessible = true
@@ -480,6 +509,18 @@ abstract class MercuryRequest<T> {
         }.toString()
     }
 
+    private fun zipParams(): MutableList<Any> {
+        var anys = mutableListOf<Any>()
+        fields.forEach {
+            it.isAccessible = true
+            val annotation = it.getAnnotation(ZipParams::class.java)
+            if (null != annotation) {
+                anys.add(it.get(this@MercuryRequest))
+            }
+        }
+        return anys
+    }
+
     private fun shouldSkipField(f: FieldAttributes?): Boolean {
         if (f == null) {
             return false
@@ -494,6 +535,33 @@ abstract class MercuryRequest<T> {
         }
         val ignore = f.getAnnotation(Ignore::class.java)
         if (null != ignore) {
+            return true
+        }
+        val zipParams = f.getAnnotation(ZipParams::class.java)
+        if (null != zipParams) {
+            return true
+        }
+        return false
+    }
+
+    private fun shouldSkipField(f: Field): Boolean {
+        if (f == null) {
+            return false
+        }
+        val h = f.getAnnotation(Header::class.java)
+        if (null != h) {
+            return true
+        }
+        val path = f.getAnnotation(Path::class.java)
+        if (null != path) {
+            return true
+        }
+        val ignore = f.getAnnotation(Ignore::class.java)
+        if (null != ignore) {
+            return true
+        }
+        val zipParams = f.getAnnotation(ZipParams::class.java)
+        if (null != zipParams) {
             return true
         }
         return false
