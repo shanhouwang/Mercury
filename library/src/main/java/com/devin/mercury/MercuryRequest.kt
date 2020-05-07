@@ -356,9 +356,7 @@ abstract class MercuryRequest<T> {
                 successCallback.invoke(data)
             }
             /** 说明此时业务数据是正常的 判断是否存储 */
-            async {
-                store(body)
-            }
+            store(body)
         } catch (e: Exception) {
             Mercury.handler.post {
                 failedCallback.invoke(MercuryException(DATA_PARSER_EXCEPTION, "数据解析失败"))
@@ -564,11 +562,11 @@ abstract class MercuryRequest<T> {
         }
     }
 
-    private suspend fun store(body: String?) = withContext(Dispatchers.Default) {
+    private fun store(body: String?) = runBlocking {
         "store".getThreadName()
-        body ?: return@withContext
-        cacheAnnotation ?: return@withContext
-        val key = generateKey() ?: return@withContext
+        body ?: return@runBlocking
+        cacheAnnotation ?: return@runBlocking
+        val key = generateKey() ?: return@runBlocking
         MLog.d(">>>>>key：$key<<<<<")
         getMercuryConfig()?.let { MercuryCache.put(it, key, body) }
     }
