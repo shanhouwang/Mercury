@@ -47,7 +47,7 @@ publish {
     userOrg = 'shanhouwang'
     groupId = 'com.devin'
     artifactId = 'mercury'
-    publishVersion = '0.0.9-alpha'
+    publishVersion = '0.0.9-beta'
     desc = 'a okhttp library'
     website = 'https://github.com/shanhouwang/Mercury'
 }
