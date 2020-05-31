@@ -22,7 +22,7 @@ class MainActivity : AppCompatActivity() {
                     println(">>>>>end: ${Thread.currentThread().id}<<<<<")
                 }
                         , successCallback = {
-                    println(">>>>>success: ${Thread.currentThread().id}<<<<<")
+                    println(">>>>>success: ${Thread.currentThread().id} $this <<<<<")
                 }
                         , cacheCallback = {
                     println(">>>>>cache: ${Thread.currentThread().id}<<<<<")

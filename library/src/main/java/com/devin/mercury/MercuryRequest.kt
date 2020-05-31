@@ -72,6 +72,9 @@ abstract class MercuryRequest<T> {
     @Ignore
     private val cacheAnnotation: Cache? by lazy { this@MercuryRequest.javaClass.getAnnotation(Cache::class.java) }
 
+    @Ignore
+    private val testAnnotation: Test? by lazy { this@MercuryRequest.javaClass.getAnnotation(Test::class.java) }
+
     constructor()
 
     constructor(configKey: String) {
@@ -318,10 +321,14 @@ abstract class MercuryRequest<T> {
         startCallback.invoke()
         /** 判断是否使用缓存 */
         getCache(cacheCallback)
-
+        // 自定一定了Mock数据
+        if (null != testAnnotation && testAnnotation?.value?.isNotEmpty() == true) {
+            doResponse(endCallback, testAnnotation?.value, failedCallback, successCallback)
+            return@runBlocking
+        }
         getMercuryConfig()?.getOkClient()?.newCall(buildRequest(dealUrl()))?.enqueue(object : Callback {
             override fun onResponse(call: Call?, response: Response?) {
-                doResponse(endCallback, response, failedCallback, successCallback)
+                doResponse(endCallback, response?.body()?.string(), failedCallback, successCallback)
             }
 
             override fun onFailure(call: Call?, e: IOException?) {
@@ -332,13 +339,13 @@ abstract class MercuryRequest<T> {
         })
     }
 
-    private fun CoroutineScope.doResponse(endCallback: () -> Unit, response: Response?, failedCallback: MercuryException.() -> Unit, successCallback: T.() -> Unit) {
+    private fun CoroutineScope.doResponse(endCallback: () -> Unit, response: String?, failedCallback: MercuryException.() -> Unit, successCallback: T.() -> Unit) {
         "doResponse".getThreadName()
         Mercury.handler.post {
             endCallback.invoke()
         }
-        var body = response?.body()?.string()
-        MLog.d(">>>>>onResponse: $body<<<<<")
+        MLog.d(">>>>>onResponse: $response<<<<<")
+        var body = response
         /** 先走全局过滤器 */
         val global = getMercuryConfig()?.getGlobalFilter()?.body(body ?: "", getType())
         if (global?.success != null && !global.success) {
