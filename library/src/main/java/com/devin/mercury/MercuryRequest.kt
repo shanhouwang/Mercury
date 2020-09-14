@@ -26,6 +26,7 @@ import okhttp3.*
 import java.io.File
 import java.io.IOException
 import java.lang.reflect.Field
+import java.lang.reflect.Modifier
 import java.lang.reflect.ParameterizedType
 import java.lang.reflect.Type
 import java.util.*
@@ -346,6 +347,7 @@ abstract class MercuryRequest<T> {
         }
         MLog.d(">>>>>onResponse: $response<<<<<")
         var body = response
+
         /** 先走全局过滤器 */
         val global = getMercuryConfig()?.getGlobalFilter()?.body(body ?: "", getType())
         if (global?.success != null && !global.success) {
@@ -381,7 +383,7 @@ abstract class MercuryRequest<T> {
     }
 
     private fun build(startCallback: MercuryStartCallback?, endCallback: MercuryEndCallback?, successCallback: MercurySuccessCallback<T>, cacheCallback: MercuryCacheCallback<T>?, failedCallback: MercuryFailedCallback?) = runBlocking<Unit> {
-        build({ startCallback?.callback() }, { endCallback?.callback() }, { successCallback?.callback(this) }, { cacheCallback?.callback(this) }, { failedCallback?.callback(this) })
+        build({ startCallback?.callback() }, { endCallback?.callback() }, { successCallback.callback(this) }, { cacheCallback?.callback(this) }, { failedCallback?.callback(this) })
     }
 
     private suspend fun buildRequest(url: String): Request = withContext(Dispatchers.Default) {
@@ -411,8 +413,10 @@ abstract class MercuryRequest<T> {
                                 override fun shouldSkipClass(clazz: Class<*>?): Boolean {
                                     return false
                                 }
-                            }).create()
-                    var paramsAny = zipParams()
+                            })
+                            .excludeFieldsWithModifiers(Modifier.FINAL, Modifier.TRANSIENT, Modifier.STATIC)
+                            .create()
+                    val paramsAny = zipParams()
                     var param: Any? = null
                     if (paramsAny.size > 1) {
                         throw IllegalArgumentException("Must Just Have Only One @ZipParams Definition, Can Not >1")
@@ -422,7 +426,7 @@ abstract class MercuryRequest<T> {
                     }
                     var paramsJSON = ""
                     if (null != param) {
-                        var map: HashMap<String, Any> = gson.fromJson(gson.toJson(param), object : TypeToken<HashMap<String, Any>>() {}.type)
+                        val map: HashMap<String, Any> = gson.fromJson(gson.toJson(param), object : TypeToken<HashMap<String, Any>>() {}.type)
                         fields?.forEach {
                             it.isAccessible = true
                             if (!shouldSkipField(it)) {
@@ -517,7 +521,7 @@ abstract class MercuryRequest<T> {
     }
 
     private fun zipParams(): MutableList<Any> {
-        var anys = mutableListOf<Any>()
+        val anys = mutableListOf<Any>()
         fields.forEach {
             it.isAccessible = true
             val annotation = it.getAnnotation(ZipParams::class.java)

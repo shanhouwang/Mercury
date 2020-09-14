@@ -12,7 +12,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        MainRequest("10086", " ")
+        MainRequest(MainRequestParams("10086", "devinMainRequest"))
                 .requestByLifecycle(startCallback = {
                     progressBar.visibility = View.VISIBLE
                     println(">>>>>start: ${Thread.currentThread().id}<<<<<")
