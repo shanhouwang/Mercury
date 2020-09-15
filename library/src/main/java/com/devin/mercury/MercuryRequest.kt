@@ -38,43 +38,56 @@ import java.util.*
 abstract class MercuryRequest<T> {
 
     @Ignore
+    @Transient
     private var tag: String? = null
 
     @Ignore
+    @Transient
     private var mercuryBuildHeaders: MercuryBuildHeaders? = null
 
     @Ignore
+    @Transient
     private var filter: MercuryFilter? = null
 
     @Ignore
+    @Transient
     private var configKey: String? = null
 
     @Ignore
-    private val fields by lazy { this@MercuryRequest.javaClass.declaredFields }
+    @delegate:Transient
+    val fields by lazy { this@MercuryRequest.javaClass.declaredFields }
 
     @Ignore
-    private val getAnnotation: Get? by lazy { this@MercuryRequest.javaClass.getAnnotation(Get::class.java) }
+    @delegate:Transient
+    val getAnnotation: Get? by lazy { this@MercuryRequest.javaClass.getAnnotation(Get::class.java) }
 
     @Ignore
-    private val postAnnotation: Post? by lazy { this@MercuryRequest.javaClass.getAnnotation(Post::class.java) }
+    @delegate:Transient
+    val postAnnotation: Post? by lazy { this@MercuryRequest.javaClass.getAnnotation(Post::class.java) }
 
     @Ignore
-    private val patchAnnotation: Patch? by lazy { this@MercuryRequest.javaClass.getAnnotation(Patch::class.java) }
+    @delegate:Transient
+    val patchAnnotation: Patch? by lazy { this@MercuryRequest.javaClass.getAnnotation(Patch::class.java) }
 
     @Ignore
-    private val putAnnotation: Put? by lazy { this@MercuryRequest.javaClass.getAnnotation(Put::class.java) }
+    @delegate:Transient
+    val putAnnotation: Put? by lazy { this@MercuryRequest.javaClass.getAnnotation(Put::class.java) }
 
     @Ignore
-    private val deleteAnnotation: Delete? by lazy { this@MercuryRequest.javaClass.getAnnotation(Delete::class.java) }
+    @delegate:Transient
+    val deleteAnnotation: Delete? by lazy { this@MercuryRequest.javaClass.getAnnotation(Delete::class.java) }
 
     @Ignore
-    private val hostAnnotation: Host? by lazy { this@MercuryRequest.javaClass.getAnnotation(Host::class.java) }
+    @delegate:Transient
+    val hostAnnotation: Host? by lazy { this@MercuryRequest.javaClass.getAnnotation(Host::class.java) }
 
     @Ignore
-    private val cacheAnnotation: Cache? by lazy { this@MercuryRequest.javaClass.getAnnotation(Cache::class.java) }
+    @delegate:Transient
+    val cacheAnnotation: Cache? by lazy { this@MercuryRequest.javaClass.getAnnotation(Cache::class.java) }
 
     @Ignore
-    private val testAnnotation: Test? by lazy { this@MercuryRequest.javaClass.getAnnotation(Test::class.java) }
+    @delegate:Transient
+    val testAnnotation: Test? by lazy { this@MercuryRequest.javaClass.getAnnotation(Test::class.java) }
 
     constructor()
 
