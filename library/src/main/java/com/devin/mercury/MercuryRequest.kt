@@ -364,7 +364,9 @@ abstract class MercuryRequest<T> {
         /** 先走全局过滤器 */
         val global = getMercuryConfig()?.getGlobalFilter()?.body(body ?: "", getType())
         if (global?.success != null && !global.success) {
-            failedCallback.invoke(global.exception ?: MercuryException(OTHER_EXCEPTION, ""))
+            Mercury.handler.post {
+                failedCallback.invoke(global.exception ?: MercuryException(OTHER_EXCEPTION, ""))
+            }
             return
         }
         body = global?.body ?: body
@@ -372,7 +374,9 @@ abstract class MercuryRequest<T> {
         /** 再走本次请求过滤器 */
         val thisFilter = filter?.body(body ?: "", getType())
         if (thisFilter?.success != null && !thisFilter.success) {
-            failedCallback.invoke(thisFilter.exception ?: MercuryException(OTHER_EXCEPTION, ""))
+            Mercury.handler.post {
+                failedCallback.invoke(thisFilter.exception ?: MercuryException(OTHER_EXCEPTION, ""))
+            }
             return
         }
         body = thisFilter?.body ?: body
