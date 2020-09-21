@@ -1,6 +1,6 @@
 package com.devin.mercury.model
 
-data class MercuryException(val errorCode: Int, val errorMessage: String)
+data class MercuryException(val errorCode: Int, val errorMessage: String?)
 
 const val IO_EXCEPTION = -0x1000
 
